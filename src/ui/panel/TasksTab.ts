@@ -7,16 +7,16 @@ import { describeError, isCancellation } from '../../utils/errors';
 import { readTasksFormat, tasksPluginEnabled } from '../tasksPlugin';
 import { iconButton, noKeyMessage } from './ConversationsTab';
 import { copyToClipboard, insertIntoLastNote } from './editorActions';
+import { nextContentRule, type ContentRule } from './filters';
 import type { FieldyView } from './FieldyView';
 
-type TaskFilter = 'open' | 'completed' | 'dismissed' | 'all';
+type TaskFilter = 'open' | 'completed' | 'dismissed';
 type Grouping = 'due' | 'conversation' | 'none';
 
 const FILTER_LABELS: Record<TaskFilter, string> = {
 	open: 'Open tasks',
 	completed: 'Completed tasks',
 	dismissed: 'Dismissed tasks',
-	all: 'All tasks',
 };
 
 const GROUPING_LABELS: Record<Grouping, string> = {
@@ -30,7 +30,6 @@ const FILTER_ICONS: Record<TaskFilter, string> = {
 	open: 'circle',
 	completed: 'circle-check',
 	dismissed: 'circle-slash',
-	all: 'list-checks',
 };
 
 const GROUPING_ICONS: Record<Grouping, string> = {
@@ -46,8 +45,9 @@ const FILTER_STATUSES: Record<TaskFilter, readonly TaskStatus[]> = {
 	open: OPEN,
 	completed: ['completed'],
 	dismissed: DISMISSED,
-	all: [...OPEN, 'completed', ...DISMISSED],
 };
+
+const TASK_FILTERS = Object.keys(FILTER_LABELS) as TaskFilter[];
 
 const STATUS_ICONS: Record<TaskStatus, string> = {
 	new: 'circle',
@@ -93,7 +93,8 @@ const SEARCH_DELAY_MS = 150;
  * Changes are only ever sent to Fieldy when the user clicks.
  */
 export class TasksTab {
-	private filter: TaskFilter = 'open';
+	/** Like the Conversations icons: only these, never these, or any (no entry). Open tasks by default. */
+	private rules: Partial<Record<TaskFilter, ContentRule>> = { open: 'has' };
 	private grouping: Grouping = 'due';
 	private search = '';
 	private tasks: FieldyTask[] = [];
@@ -169,12 +170,20 @@ export class TasksTab {
 		return !this.search || task.title.toLowerCase().includes(this.search) || this.sourceTitle(task).toLowerCase().includes(this.search);
 	}
 
+	/** The status groups the icons let through. */
+	private shownFilters(): TaskFilter[] {
+		const only = TASK_FILTERS.filter((key) => this.rules[key] === 'has');
+		return (only.length > 0 ? only : TASK_FILTERS).filter((key) => this.rules[key] !== 'lacks');
+	}
+
 	private visible(): FieldyTask[] {
-		const statuses = FILTER_STATUSES[this.filter];
+		const shown = this.shownFilters();
+		const statuses = shown.flatMap((key) => FILTER_STATUSES[key]);
+		const completedOnly = shown.length === 1 && shown[0] === 'completed';
 		return this.tasks
 			.filter((t) => statuses.includes(t.status) && this.matchesSearch(t))
 			.sort((a, b) => {
-				if (this.filter === 'completed') return (b.completionDate ?? '').localeCompare(a.completionDate ?? '');
+				if (completedOnly) return (b.completionDate ?? '').localeCompare(a.completionDate ?? '');
 				return (a.date ?? '￿').localeCompare(b.date ?? '￿') || a.title.localeCompare(b.title);
 			});
 	}
@@ -191,17 +200,23 @@ export class TasksTab {
 	private renderFilterIcons(): void {
 		const icons = this.iconsEl;
 		icons.empty();
-		for (const key of Object.keys(FILTER_LABELS) as TaskFilter[]) {
+		for (const key of TASK_FILTERS) {
 			const count = this.loaded ? this.tasks.filter((t) => FILTER_STATUSES[key].includes(t.status)).length : null;
-			const on = this.filter === key;
-			const label = `${FILTER_LABELS[key]}${count === null ? '' : ` (${count})`}`;
-			const button = iconButton(icons, FILTER_ICONS[key], on ? `${label}: shown` : `Show ${label.charAt(0).toLowerCase()}${label.slice(1)}`, () => {
-				this.filter = key;
+			const rule = this.rules[key];
+			const name = `${FILTER_LABELS[key]}${count === null ? '' : ` (${count})`}`;
+			const hint =
+				rule === 'has' ? `${name}: only these (click to hide them)`
+				: rule === 'lacks' ? `${name}: hidden (click for any)`
+				: `${name}: any (click for only these)`;
+			const button = iconButton(icons, FILTER_ICONS[key], hint, () => {
+				const next = nextContentRule(this.rules[key]);
+				if (next) this.rules[key] = next;
+				else delete this.rules[key];
 				this.shown = RENDER_BATCH;
 				this.renderList();
 			});
-			button.addClass('fieldy-filter-icon', 'fieldy-filter-counted', on ? 'is-on' : 'is-any');
-			button.setAttribute('aria-pressed', on ? 'true' : 'false');
+			button.addClass('fieldy-filter-icon', 'fieldy-filter-counted', rule === 'has' ? 'is-on' : rule === 'lacks' ? 'is-lacks' : 'is-any');
+			button.setAttribute('aria-pressed', rule ? 'true' : 'false');
 			if (count !== null) button.createSpan({ cls: 'fieldy-filter-count', text: String(count) });
 		}
 		icons.createSpan({ cls: 'fieldy-filter-sep' });
@@ -249,7 +264,9 @@ export class TasksTab {
 		}
 		const tasks = this.visible();
 		if (this.loaded && tasks.length === 0) {
-			this.infoEl.setText(this.search ? 'No task matches your search.' : `No ${FILTER_LABELS[this.filter].toLowerCase()}.`);
+			const shown = this.shownFilters();
+			const what = shown.length === 1 ? `No ${FILTER_LABELS[shown[0] as TaskFilter].toLowerCase()}.` : 'No task matches these filters.';
+			this.infoEl.setText(this.search ? 'No task matches your search.' : what);
 		}
 		// Group headings count every task in the group, drawn or not.
 		let budget = this.shown;

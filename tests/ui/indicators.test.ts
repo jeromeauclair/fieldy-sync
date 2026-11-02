@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { conversationIndicators, INDICATOR_ORDER, mapLinks } from '../../src/ui/panel/indicators';
+import { conversationIndicators, INDICATOR_ORDER, mapLinks, SOURCE_ICONS, sourceIndicator } from '../../src/ui/panel/indicators';
 import { makeConversation } from '../helpers/fixtures';
 
 const states = (list: ReturnType<typeof conversationIndicators>) => Object.fromEntries(list.map((i) => [i.key, i.state]));
@@ -74,5 +74,14 @@ describe('mapLinks', () => {
 		);
 		expect(mapLinks(place)).toBeNull();
 		expect(mapLinks(null)).toBeNull();
+	});
+});
+
+describe('sourceIndicator', () => {
+	it('uses only the filter row icons, in the filter row order', () => {
+		expect(sourceIndicator(undefined)).toMatchObject({ icons: [], state: 'unknown' });
+		expect(sourceIndicator(new Set())).toMatchObject({ icons: [], state: 'off', label: 'Recording source unknown' });
+		expect(sourceIndicator(new Set(['phone']))).toEqual({ icons: [SOURCE_ICONS.phone], state: 'on', label: 'Recorded with: Phone' });
+		expect(sourceIndicator(new Set(['desktop', 'wearable'])).icons).toEqual([SOURCE_ICONS.wearable, SOURCE_ICONS.desktop]);
 	});
 });

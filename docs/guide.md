@@ -13,13 +13,13 @@ How to use the side panel, the note banners, `fieldy` blocks, Dataview, edited n
 
 ## The Fieldy panel
 
-Open it with the speech-bubble ribbon icon or **Fieldy Sync: Open Fieldy panel**. It lives in the right sidebar and works independently of sync: you take exactly what you need, when you need it. Text you insert or copy from it is plain Markdown that belongs to you; it is never synced or updated afterwards.
+Open it with the <img src="icons/messages-square.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon or **Fieldy Sync: Open Fieldy panel**. It lives in the right sidebar and works independently of sync: you take exactly what you need, when you need it. Text you insert or copy from it is plain Markdown that belongs to you; it is never synced or updated afterwards.
 
 ![A synced note next to the Conversations tab](images/panel-and-note.png)
 
 ### Status
 
-At the top: a coloured dot with "Connected as you@example.com" (or what is wrong), the requests sent to Fieldy in the last minute against your request budget, and a button to check again. Below it: when the last sync ran and what it did, buttons to sync now or open the import dialog, and a pencil button listing your edited notes when there are any.
+At the top: a coloured dot with "Connected as you@example.com" (or what is wrong), the requests sent to Fieldy in the last minute against your request budget, and <img src="icons/refresh-ccw.svg" width="16" height="16" alt="Check again"> to check again. Below it: when the last sync ran and what it did, <img src="icons/refresh-cw.svg" width="16" height="16" alt="Sync now"> to sync now, <img src="icons/download.svg" width="16" height="16" alt="Import"> to open the import dialog, and <img src="icons/pencil.svg" width="16" height="16" alt="Edited notes"> listing your edited notes when there are any.
 
 ### Conversations
 
@@ -29,20 +29,20 @@ Each card shows the title, date, length and people, the note status, and a row o
 
 | Icon | Meaning |
 | --- | --- |
-| ⚡ | Brief: Fieldy's short format |
-| ☰ | Summary |
-| 📄 | Full memory content from your template |
-| ☑ | Tasks (the tooltip gives the count) |
-| ❝ | Quotes |
-| 🔗 | An active Fieldy share link (checked in the background for the cards you see, faint until checked) |
-| 📍 | Location |
-| 📅 | Linked calendar event |
+| <img src="icons/zap.svg" width="16" height="16" alt="Brief"> | Brief: Fieldy's short format |
+| <img src="icons/align-left.svg" width="16" height="16" alt="Summary"> | Summary |
+| <img src="icons/file-text.svg" width="16" height="16" alt="Full memory content"> | Full memory content from your template |
+| <img src="icons/list-checks.svg" width="16" height="16" alt="Tasks"> | Tasks (the tooltip gives the count) |
+| <img src="icons/quote.svg" width="16" height="16" alt="Quotes"> | Quotes |
+| <img src="icons/link.svg" width="16" height="16" alt="Share link"> | An active Fieldy share link (checked in the background for the cards you see, faint until checked) |
+| <img src="icons/map-pin.svg" width="16" height="16" alt="Location"> | Location |
+| <img src="icons/calendar.svg" width="16" height="16" alt="Calendar event"> | Linked calendar event |
 
-Before these, a grey icon shows where it was recorded: the Fieldy wearable 🎙, your phone 📱 or the desktop app 🖥. Fieldy does not include this in a conversation, so the panel looks it up in the background (one short listing per source for the loaded period). Click it to show only conversations recorded the same way.
+Before these, a grey icon shows where it was recorded: the Fieldy wearable <img src="icons/mic.svg" width="16" height="16" alt="Wearable">, your phone <img src="icons/smartphone.svg" width="16" height="16" alt="Phone"> or the desktop app <img src="icons/monitor.svg" width="16" height="16" alt="Desktop">. These are the same icons as the source filters under the search box. Fieldy does not include this in a conversation, so the panel looks it up in the background (one short listing per source for the loaded period); until then, or when no source lists the conversation, the place stays empty. Click it to show only conversations recorded the same way.
 
-**Card icons are buttons.** Click one to copy what it stands for: the summary, full memory content, tasks, quotes, share link, location or calendar event (⚡ copies the overview). Right-click it to insert it into the note you are editing instead, open the location in Google Maps or OpenStreetMap, or open the share link. While the [Tasks](https://publish.obsidian.md/tasks/) plugin is enabled, tasks and the calendar event are copied as Tasks items written with your Tasks settings (the event is scheduled ⏳ on its day); the right-click menu also offers this plugin's own format.
+**Card icons are buttons.** Click one to copy what it stands for: the summary, full memory content, tasks, quotes, share link, location or calendar event (<img src="icons/zap.svg" width="16" height="16" alt="Brief"> copies the overview). Right-click it to insert it into the note you are editing instead, open the location in Google Maps or OpenStreetMap, or open the share link. While the [Tasks](https://publish.obsidian.md/tasks/) plugin is enabled, tasks and the calendar event are copied as Tasks items written with your Tasks settings (the event is scheduled ⏳ on its day); the right-click menu also offers this plugin's own format.
 
-**Filters.** Under the search box, one button per icon filters the list: click once for "only with it", again for "only without it", a third time for "any". The recording sources follow (one at a time). The filter button next to the search box opens more filters: date, time of day, speaker, location and note status. Filters apply to the loaded conversations.
+**Filters.** Under the search box, one button per icon filters the list: click once for "only with it", again for "only without it", a third time for "any". The recording sources follow (one at a time). The <img src="icons/filter.svg" width="16" height="16" alt="Filters"> button next to the search box opens more filters: date, time of day, speaker, location and note status. Filters apply to the loaded conversations.
 
 **Note status.** The label shows whether the conversation has a note (In vault, Not imported, Edited, Paused, Deleted from vault, Locked). It has a solid border when the last sync created the note and a dashed one when it updated it. Click it to open the note.
 
@@ -50,18 +50,19 @@ Before these, a grey icon shows where it was recorded: the Fieldy wearable 🎙,
 
 The buttons on each card:
 
-- **Open the note**, or **Create a note**: creates the same note a sync would, without running a sync.
-- **Refresh** ⟳ the note from Fieldy, or, for a note you edited, **Restore** ↺ the Fieldy version (see [Edited notes](#edited-notes)).
-- **Insert…** puts a piece at your cursor in the note you were last editing: the summary, tasks (also as Obsidian Tasks when that plugin is enabled), quotes, transcript, full memory content, title and details, the whole conversation, a link to its note, its share link or its ID. Pieces the conversation does not have are greyed out.
-- **Copy…**: the same pieces, to the clipboard.
+- <img src="icons/file-text.svg" width="16" height="16" alt="Open the note"> **Open the note**, or <img src="icons/file-plus.svg" width="16" height="16" alt="Create a note"> **Create a note**: creates the same note a sync would, without running a sync.
+- <img src="icons/refresh-cw.svg" width="16" height="16" alt="Refresh"> **Refresh** the note from Fieldy, or, for a note you edited, <img src="icons/rotate-ccw.svg" width="16" height="16" alt="Restore"> **Restore** the Fieldy version (see [Edited notes](#edited-notes)).
+- <img src="icons/text-cursor-input.svg" width="16" height="16" alt="Insert"> **Insert…** puts a piece at your cursor in the note you were last editing: the summary, tasks (also as Obsidian Tasks when that plugin is enabled), quotes, transcript, full memory content, title and details, the whole conversation, a link to its note, its share link or its ID. Pieces the conversation does not have are greyed out.
+- <img src="icons/copy.svg" width="16" height="16" alt="Copy"> **Copy…**: the same pieces, to the clipboard.
+- <img src="icons/fingerprint.svg" width="16" height="16" alt="Copy the ID"> copies the conversation's ID.
 
 ### Tasks
 
-All your Fieldy tasks, searchable. The icons under the search box choose which tasks to show (open, completed, dismissed or all, each with its count) and how to group them (by due date: overdue, today, next 7 days, later, no date; by conversation; or not at all). Each task shows its due date and the conversation it came from.
+All your Fieldy tasks, searchable. The icons under the search box filter by status, each with its count: open <img src="icons/circle.svg" width="16" height="16" alt="Open">, completed <img src="icons/circle-check.svg" width="16" height="16" alt="Completed"> and dismissed <img src="icons/circle-slash.svg" width="16" height="16" alt="Dismissed">. Like the Conversations filters, click once for "only these", again to hide them, a third time for "any". The tab starts with open tasks only; with all three on "any", it shows every task. The next icons choose how to group them: by due date <img src="icons/calendar-clock.svg" width="16" height="16" alt="By due date"> (overdue, today, next 7 days, later, no date), by conversation <img src="icons/messages-square.svg" width="16" height="16" alt="By conversation">, or not at all <img src="icons/list.svg" width="16" height="16" alt="No grouping">. Each task shows its due date and the conversation it came from.
 
 ![The Tasks tab](images/tasks-tab.png)
 
-- **Change them in Fieldy:** tick the checkbox to mark a task done, or untick it to reopen it. The buttons under each task reopen a dismissed task, edit its title and due date, cancel it (after confirmation), open its conversation's note, or show the conversation in the panel. Changes are sent to Fieldy only when you click, and the note shows them after the next sync.
+- **Change them in Fieldy:** tick the checkbox to mark a task done, or untick it to reopen it. The buttons under each task reopen a dismissed task <img src="icons/rotate-ccw.svg" width="16" height="16" alt="Reopen">, edit its title and due date <img src="icons/pencil.svg" width="16" height="16" alt="Edit">, cancel it after confirmation <img src="icons/circle-x.svg" width="16" height="16" alt="Cancel">, open its conversation's note <img src="icons/file-text.svg" width="16" height="16" alt="Open the note">, show the conversation in the panel <img src="icons/messages-square.svg" width="16" height="16" alt="Show the conversation">, or insert <img src="icons/text-cursor-input.svg" width="16" height="16" alt="Insert"> and copy <img src="icons/copy.svg" width="16" height="16" alt="Copy"> the task. Changes are sent to Fieldy only when you click, and the note shows them after the next sync.
 - **Insert or copy** one task, or the whole list with **Insert all…** and **Copy all…**, as a Markdown checklist. When the Tasks plugin is enabled you can also insert them as Obsidian Tasks items, written with your Tasks settings, read each time: emoji or Dataview format, global filter, your symbols for done and cancelled, and whether to add created ➕, done ✅ and cancelled ❌ dates. Due dates use 📅, and each task links back to its note.
 
 ### Account
@@ -72,7 +73,7 @@ Connection details; sync status with the main actions (sync, import, edited note
 
 In Live Preview and reading view, the Fieldy section's markers are shown as two banners instead of `%% fieldy:begin %%` and `%% fieldy:end %%`:
 
-- **The top banner** shows the section's state, when it was last synced, and buttons: show the conversation in the panel, **Refresh from Fieldy** ⟳ (synced notes) or **Restore the Fieldy version** ↺ (edited notes).
+- **The top banner** shows the section's state, when it was last synced, and buttons: <img src="icons/panel-right.svg" width="16" height="16" alt="Show in the panel"> show the conversation in the panel, <img src="icons/refresh-cw.svg" width="16" height="16" alt="Refresh"> **Refresh from Fieldy** (synced notes) or <img src="icons/rotate-ccw.svg" width="16" height="16" alt="Restore"> **Restore the Fieldy version** (edited notes).
 - **The end banner** marks where the section ends: your own notes go below it.
 
 | State | Meaning |
@@ -173,8 +174,8 @@ SORT fieldy_start DESC
 
 When you edit inside a note's Fieldy section, the note becomes your edited version: its banner turns to *Edited* and sync leaves it as you wrote it. Nothing is lost, because the original is still in Fieldy.
 
-- **See the original:** the panel button on the banner, **Show Fieldy version of current note**, or the conversation's card in the panel.
-- **Bring it back:** the ↺ button on the banner or the card, or **Review edited notes** (also for several notes at once).
+- **See the original:** the <img src="icons/panel-right.svg" width="16" height="16" alt="Show in the panel"> button on the banner, **Show Fieldy version of current note**, or the conversation's card in the panel.
+- **Bring it back:** the <img src="icons/rotate-ccw.svg" width="16" height="16" alt="Restore"> button on the banner or the card, or **Review edited notes** (also for several notes at once).
 
 | Choice | Result |
 | --- | --- |
@@ -185,7 +186,7 @@ If you undo your edits yourself, the note goes back to receiving updates on its 
 
 ## Import
 
-**Fieldy Sync: Import conversations** (or the ⬇ button in the panel) brings in conversations outside the sync window: pick a period up to your entire history or a custom range, see each conversation's status (new, in vault, edited, paused, deleted, locked), filter by title, select, and choose the destination folder. The import runs in the background with progress in the status bar, and follows the same rules as sync: no duplicates, and edited notes are left alone.
+**Fieldy Sync: Import conversations** (or the <img src="icons/download.svg" width="16" height="16" alt="Import"> button in the panel) brings in conversations outside the sync window: pick a period up to your entire history or a custom range, see each conversation's status (new, in vault, edited, paused, deleted, locked), filter by title, select, and choose the destination folder. The import runs in the background with progress in the status bar, and follows the same rules as sync: no duplicates, and edited notes are left alone.
 
 ## Export
 

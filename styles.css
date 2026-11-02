@@ -440,7 +440,17 @@
 	opacity: 1;
 }
 
-/* Recording source: always shown, neutral colour, set apart from the content icons. */
+/* Recording source: the filter row's icons, neutral colour, set apart from the content icons.
+   While checking or unknown, an empty slot keeps the content icons in place. */
+.fieldy-ind-source {
+	gap: var(--size-2-1);
+	min-width: var(--icon-size);
+}
+
+.fieldy-ind-source-icon {
+	display: inline-flex;
+}
+
 .fieldy-ind-source.is-on {
 	color: var(--text-muted);
 }

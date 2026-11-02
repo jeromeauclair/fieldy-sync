@@ -54,9 +54,9 @@ API keys are created in the Fieldy mobile or desktop app under **Settings → De
 2. Under **API key**, choose an existing secret or create a new one and paste your Fieldy key into it. The key is stored in Obsidian's secret storage; the plugin only remembers the secret's name.
 3. Select **Test connection**. On success you see the email address of your Fieldy account; nothing about the key is ever displayed.
 4. Look through the other settings pages: **Sync** (sync window, automatic sync), **Folders and file names**, **Note content**, **Tasks** and **Transcript**. Each setting explains itself, and previews show the result.
-5. Run **Fieldy Sync: Sync now** or select the ribbon icon. For older history, use **Fieldy Sync: Import conversations**.
+5. Run **Fieldy Sync: Sync now** or select the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/refresh-cw.svg" width="16" height="16" alt="Sync"> ribbon icon. For older history, use **Fieldy Sync: Import conversations**.
 
-Then open the panel with the speech-bubble ribbon icon. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) walks through it.
+Then open the panel with the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/messages-square.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) walks through it.
 
 ## At a glance
 
@@ -125,5 +125,7 @@ Copyright (C) 2026 jeromeauclair
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](LICENSE) for more details.
+
+The icons in the documentation are from [Lucide](https://lucide.dev), the icon set Obsidian uses, under the ISC License.
 
 "Fieldy" is a trademark of its owner. This plugin is an independent integration and is not affiliated with or endorsed by Fieldy.

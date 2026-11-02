@@ -23,7 +23,7 @@ First release, licensed under GPL-3.0-or-later. Requires Obsidian 1.14.0 or newe
 
 - Connection status with the requests sent in the last minute; last sync; sync, import and edited-notes buttons.
 - Conversations: periods from today to the entire history (including 3 and 14 days), search, content icons (brief, summary, memory content, tasks, quotes, share link, location, calendar event) and recording source, icon filters and a filter bar (date, time of day, speaker, location, note status). Card icons copy their content on click and offer insert, the Tasks plugin format, Google Maps or OpenStreetMap, and the share link on right-click. Copy and Insert menus grey out pieces a conversation lacks. Cards open in place without the list jumping; a loaded transcript can be hidden again.
-- Tasks tab: icon filters for open, completed, dismissed or all tasks with counts, grouping by due date or conversation; mark done, reopen, edit title and due date, or cancel in Fieldy (only on click); insert or copy as Obsidian Tasks items (emoji or Dataview format, global filter) when the Tasks plugin is enabled.
+- Tasks tab: icon filters for open, completed and dismissed tasks with counts (only these, hidden or any, like the Conversations filters), grouping by due date or conversation; mark done, reopen, edit title and due date, or cancel in Fieldy (only on click); insert or copy as Obsidian Tasks items (emoji or Dataview format, global filter) when the Tasks plugin is enabled.
 - Account: connection, export, speaker profiles, and memory templates with their last change.
 
 ### Dashboards, Dataview and export

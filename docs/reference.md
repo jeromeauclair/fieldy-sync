@@ -97,7 +97,7 @@ Some data would cost one extra request per conversation on every sync, so it is 
 - renamed speaker profiles and memory templates;
 - share links (when **Share links** is on).
 
-To refresh one note right away, use **Refresh current note from Fieldy**, or the ⟳ button on its banner or its card in the panel.
+To refresh one note right away, use **Refresh current note from Fieldy**, or the <img src="icons/refresh-cw.svg" width="16" height="16" alt="Refresh"> button on its banner or its card in the panel.
 
 ### Protecting your edits
 

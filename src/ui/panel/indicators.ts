@@ -1,4 +1,4 @@
-import type { FieldyConversation, FieldyLocation, RecordingSource } from '../../api/types';
+import { RECORDING_SOURCES, type FieldyConversation, type FieldyLocation, type RecordingSource } from '../../api/types';
 import { detailsLines, locationText } from '../../markdown/ConversationRenderer';
 
 export type IndicatorKey = 'brief' | 'summary' | 'details' | 'tasks' | 'quotes' | 'link' | 'location' | 'calendar';
@@ -51,14 +51,16 @@ export const SOURCE_ICONS: Record<RecordingSource, string> = {
 	desktop: 'monitor',
 };
 
-/** Icon and label for where a conversation was recorded; `undefined` while not checked yet. */
-export function sourceIndicator(sources: ReadonlySet<RecordingSource> | undefined): { icon: string; label: string; state: IndicatorState } {
-	if (sources === undefined) return { icon: 'mic', label: 'Checking where it was recorded…', state: 'unknown' };
-	const list = [...sources];
-	if (list.length === 0) return { icon: 'mic-off', label: 'Recording source unknown', state: 'off' };
-	if (list.length > 1) return { icon: 'layers', label: `Recorded with: ${list.map((s) => SOURCE_LABELS[s]).join(', ')}`, state: 'on' };
-	const only = list[0] as RecordingSource;
-	return { icon: SOURCE_ICONS[only], label: `Recorded with: ${SOURCE_LABELS[only]}`, state: 'on' };
+/**
+ * Icons and label for where a conversation was recorded; `undefined` while not
+ * checked yet. Only the filter row's own icons are used: none while checking or
+ * when no source lists the conversation, one per source otherwise.
+ */
+export function sourceIndicator(sources: ReadonlySet<RecordingSource> | undefined): { icons: string[]; label: string; state: IndicatorState } {
+	if (sources === undefined) return { icons: [], label: 'Checking where it was recorded…', state: 'unknown' };
+	const list = RECORDING_SOURCES.filter((s) => sources.has(s));
+	if (list.length === 0) return { icons: [], label: 'Recording source unknown', state: 'off' };
+	return { icons: list.map((s) => SOURCE_ICONS[s]), label: `Recorded with: ${list.map((s) => SOURCE_LABELS[s]).join(', ')}`, state: 'on' };
 }
 
 function plural(n: number, one: string, many = `${one}s`): string {

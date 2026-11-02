@@ -404,7 +404,7 @@ export class ConversationsTab {
 		if (!el || !conversation) return;
 		const source = sourceIndicator(this.sourcesOf(conversation));
 		el.empty();
-		setIcon(el, source.icon);
+		for (const icon of source.icons) setIcon(el.createSpan({ cls: 'fieldy-ind-source-icon' }), icon);
 		el.removeClass('is-on', 'is-off', 'is-unknown');
 		el.addClass(`is-${source.state}`);
 		const sources = this.sourcesOf(conversation);
