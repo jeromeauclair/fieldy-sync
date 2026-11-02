@@ -1,0 +1,1062 @@
+/* Fieldy Sync */
+
+.fieldy-hidden {
+	display: none !important;
+}
+
+/* Status bar */
+.fieldy-status {
+	cursor: pointer;
+}
+
+.fieldy-status.is-syncing {
+	color: var(--text-accent);
+}
+
+.fieldy-status.has-problem {
+	color: var(--text-warning);
+}
+
+/* Settings */
+.fieldy-connection-status {
+	margin-top: var(--size-4-1);
+}
+
+.fieldy-connection-status.mod-success {
+	color: var(--text-success);
+}
+
+.fieldy-connection-status.mod-warning {
+	color: var(--text-warning);
+}
+
+.fieldy-support-card {
+	margin-top: var(--size-4-4);
+	padding: var(--size-4-3) var(--size-4-4);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+.fieldy-support-button {
+	display: inline-flex;
+	gap: var(--size-2-3);
+	align-items: center;
+	height: var(--input-height);
+	padding: 0 var(--size-4-3);
+	border-radius: var(--button-radius, var(--radius-s));
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-small);
+	font-weight: var(--font-semibold);
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.fieldy-support-icon {
+	display: flex;
+}
+
+.fieldy-support-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.fieldy-support-button:hover {
+	background-color: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
+}
+
+/* Import dialog */
+.fieldy-import-modal {
+	width: min(760px, 95vw);
+}
+
+.fieldy-import-status {
+	margin: var(--size-4-2) 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-import-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: center;
+	margin-bottom: var(--size-4-2);
+}
+
+.fieldy-import-filter {
+	flex: 1 1 200px;
+}
+
+.fieldy-import-only-new {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-import-list {
+	max-height: 45vh;
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+}
+
+.fieldy-import-list:empty {
+	display: none;
+}
+
+.fieldy-import-row {
+	display: grid;
+	grid-template-columns: auto 9.5em 1fr auto;
+	gap: var(--size-4-2);
+	align-items: center;
+	padding: var(--size-2-3) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+}
+
+.fieldy-import-row:last-child {
+	border-bottom: none;
+}
+
+.fieldy-import-row:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.fieldy-import-date {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+
+.fieldy-import-title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fieldy-import-empty,
+.fieldy-import-more {
+	margin: var(--size-4-2);
+}
+
+.fieldy-badge {
+	padding: 0 var(--size-4-2);
+	border: 1px solid transparent;
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+
+/* Created (solid) or updated (dashed) by the last sync. */
+.fieldy-badge.is-synced-new {
+	border-color: currentColor;
+}
+
+.fieldy-badge.is-synced-updated {
+	border-style: dashed;
+	border-color: currentColor;
+}
+
+.fieldy-badge-new {
+	background-color: rgba(var(--color-green-rgb), 0.15);
+	color: var(--color-green);
+}
+
+.fieldy-badge-deleted {
+	background-color: rgba(var(--color-orange-rgb), 0.15);
+	color: var(--color-orange);
+}
+
+.fieldy-import-footer {
+	border-top: none;
+}
+
+/* Settings help and previews */
+.fieldy-intro .setting-item-description {
+	line-height: var(--line-height-normal);
+}
+
+.fieldy-help-more {
+	display: inline-block;
+	margin-top: var(--size-2-2);
+}
+
+.fieldy-preview {
+	margin-top: var(--size-4-1);
+	padding: var(--size-2-2) var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	overflow-wrap: anywhere;
+}
+
+.fieldy-preview-multiline {
+	white-space: pre-wrap;
+}
+
+/* Side panel */
+.fieldy-panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+}
+
+.fieldy-panel-header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding-bottom: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.fieldy-panel-status,
+.fieldy-panel-sync {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-panel-status-text,
+.fieldy-panel-sync-text {
+	flex: 1;
+	min-width: 0;
+}
+
+.fieldy-panel-sync-text {
+	color: var(--text-muted);
+}
+
+.fieldy-panel-requests {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.fieldy-panel-requests.is-busy {
+	color: var(--text-warning);
+}
+
+.fieldy-panel-sync-buttons {
+	display: flex;
+	gap: var(--size-2-1);
+}
+
+.fieldy-dot {
+	flex: none;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--text-faint);
+}
+
+.fieldy-panel-status.is-connected .fieldy-dot {
+	background-color: var(--color-green);
+}
+
+.fieldy-panel-status.is-checking .fieldy-dot {
+	background-color: var(--color-yellow);
+}
+
+.fieldy-panel-status.is-error .fieldy-dot,
+.fieldy-panel-status.is-not-configured .fieldy-dot {
+	background-color: var(--color-red);
+}
+
+.fieldy-panel-status.is-error .fieldy-panel-status-text,
+.fieldy-panel-status.is-not-configured .fieldy-panel-status-text {
+	color: var(--text-error);
+}
+
+.fieldy-panel-tabs {
+	display: flex;
+	gap: var(--size-2-2);
+}
+
+.fieldy-panel-tab {
+	display: inline-flex;
+	flex: 1;
+	gap: var(--size-2-2);
+	align-items: center;
+	justify-content: center;
+	font-size: var(--font-ui-small);
+	--icon-size: var(--icon-s);
+}
+
+.fieldy-panel-tab.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fieldy-panel-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.fieldy-panel-toolbar {
+	display: flex;
+	gap: var(--size-2-2);
+	align-items: center;
+}
+
+.fieldy-panel-search {
+	flex: 1;
+	min-width: 0;
+}
+
+.fieldy-panel-info:empty,
+.fieldy-panel-footer:empty {
+	display: none;
+}
+
+.fieldy-panel-info {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-panel-footer {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: center;
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-muted {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-icon-button {
+	--icon-size: var(--icon-s);
+}
+
+/* Conversation list */
+.fieldy-conv-list {
+	overflow-anchor: none;
+}
+
+.fieldy-conv-list,
+.fieldy-task-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+}
+
+.fieldy-conv {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+}
+
+.fieldy-conv.is-expanded {
+	border-color: var(--interactive-accent);
+}
+
+.fieldy-conv-header {
+	display: flex;
+	gap: var(--size-2-3);
+	align-items: flex-start;
+	padding: var(--size-4-2) var(--size-4-2) var(--size-2-1);
+	cursor: pointer;
+}
+
+.fieldy-conv-header:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	border-radius: var(--radius-m);
+}
+
+.fieldy-conv-chevron {
+	flex: none;
+	color: var(--text-muted);
+	--icon-size: var(--icon-xs);
+	padding-top: 2px;
+}
+
+.fieldy-conv-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.fieldy-conv-title {
+	font-weight: var(--font-semibold);
+	overflow-wrap: anywhere;
+}
+
+.fieldy-conv-meta,
+.fieldy-task-meta {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-conv-footer {
+	display: flex;
+	gap: var(--size-4-2);
+	align-items: center;
+	padding: 0 var(--size-2-3) var(--size-2-2) var(--size-4-2);
+}
+
+.fieldy-conv-actions {
+	display: flex;
+	gap: var(--size-2-1);
+	justify-content: flex-end;
+	margin-left: auto;
+}
+
+/* Content icons on folded cards: coloured when present, grey when not. */
+.fieldy-indicators {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	align-items: center;
+}
+
+.fieldy-ind {
+	display: inline-flex;
+	/* Muted rather than faint text: themes (dark ones especially) make faint text very dim. */
+	color: var(--text-muted);
+	opacity: 0.55;
+	--icon-size: 14px;
+	--icon-stroke: 2px;
+	transition: color 120ms ease-in-out, opacity 120ms ease-in-out;
+}
+
+.fieldy-ind.is-unknown {
+	opacity: 0.3;
+}
+
+.fieldy-ind.is-on {
+	opacity: 1;
+}
+
+/* Recording source: always shown, neutral colour, set apart from the content icons. */
+.fieldy-ind-source.is-on {
+	color: var(--text-muted);
+}
+
+.fieldy-ind-source {
+	padding-right: var(--size-2-2);
+	border-right: 1px solid var(--background-modifier-border);
+}
+
+.fieldy-ind-brief.is-on {
+	color: var(--color-yellow);
+}
+
+.fieldy-ind-summary.is-on {
+	color: var(--color-blue);
+}
+
+.fieldy-ind-details.is-on {
+	color: var(--color-cyan);
+}
+
+.fieldy-ind-tasks.is-on {
+	color: var(--color-green);
+}
+
+.fieldy-ind-quotes.is-on {
+	color: var(--color-purple);
+}
+
+.fieldy-ind-link.is-on {
+	color: var(--color-orange);
+}
+
+.fieldy-ind-location.is-on {
+	color: var(--color-red);
+}
+
+.fieldy-ind-calendar.is-on {
+	color: var(--color-pink);
+}
+
+/* Filter bar: icon buttons share the card icon colours. */
+.fieldy-filter-bar {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	padding: var(--size-2-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+
+.fieldy-filter-bar.is-hidden {
+	display: none;
+}
+
+.fieldy-panel-toolbar .fieldy-icon-button.is-active {
+	color: var(--interactive-accent);
+	background-color: var(--background-modifier-hover);
+}
+
+.fieldy-filter-icons,
+.fieldy-filter-selects {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	align-items: center;
+}
+
+.fieldy-filter-sep {
+	align-self: stretch;
+	margin: var(--size-2-1) var(--size-2-1);
+	border-left: 1px solid var(--background-modifier-border);
+}
+
+.fieldy-filter-icon {
+	position: relative;
+	border: 1px solid transparent;
+}
+
+.fieldy-filter-icon.is-any {
+	color: var(--text-muted);
+}
+
+.fieldy-filter-icon.is-on {
+	border-color: currentColor;
+	background-color: var(--background-modifier-hover);
+}
+
+/* "Only without": the icon in its colour, struck through. */
+.fieldy-filter-icon.is-lacks {
+	color: var(--text-muted);
+	border-color: var(--background-modifier-border);
+}
+
+.fieldy-filter-icon.is-lacks::after {
+	content: '';
+	position: absolute;
+	left: 20%;
+	right: 20%;
+	top: 50%;
+	border-top: 2px solid var(--color-red);
+	transform: rotate(-45deg);
+}
+
+.fieldy-filter-select {
+	flex: 1 1 8rem;
+	min-width: 0;
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-filter-select.is-active {
+	border-color: var(--interactive-accent);
+}
+
+.fieldy-filter-clear {
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-conv-body {
+	padding: var(--size-2-2) var(--size-4-3) var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-section {
+	margin-top: var(--size-4-2);
+}
+
+.fieldy-section-title {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.fieldy-section-content > :first-child,
+.fieldy-conv-details > :first-child {
+	margin-top: var(--size-2-1);
+}
+
+.fieldy-section-content > :last-child,
+.fieldy-conv-details > :last-child {
+	margin-bottom: 0;
+}
+
+.fieldy-transcript {
+	max-height: 50vh;
+	overflow-y: auto;
+}
+
+.fieldy-badge-imported {
+	background-color: rgba(var(--color-blue-rgb), 0.15);
+	color: var(--color-blue);
+}
+
+.fieldy-badge-locked,
+.fieldy-badge-paused {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-faint);
+}
+
+/* Task list */
+.fieldy-task {
+	display: flex;
+	gap: var(--size-2-3);
+	align-items: flex-start;
+	padding: var(--size-2-3) var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.fieldy-task-icon {
+	flex: none;
+	padding-top: 2px;
+	color: var(--text-muted);
+	--icon-size: var(--icon-s);
+}
+
+.fieldy-task-completed .fieldy-task-icon {
+	color: var(--color-green);
+}
+
+.fieldy-task-main {
+	flex: 1;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.fieldy-task-completed .fieldy-task-title {
+	color: var(--text-muted);
+	text-decoration: line-through;
+}
+
+.fieldy-task-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	margin-top: var(--size-2-1);
+	margin-left: calc(-1 * var(--size-2-2));
+}
+
+.fieldy-task-check {
+	flex: none;
+	margin-top: 3px;
+	cursor: pointer;
+}
+
+.fieldy-task.is-busy {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+.fieldy-task.is-overdue .fieldy-task-meta {
+	color: var(--text-error);
+}
+
+.fieldy-task-group {
+	margin-top: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+}
+
+.fieldy-task-group:first-child {
+	margin-top: 0;
+}
+
+.fieldy-task-group.is-overdue {
+	color: var(--text-error);
+}
+
+.fieldy-edit-task-title {
+	width: 100%;
+}
+
+/* Account tab */
+.fieldy-card {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.fieldy-card-title {
+	font-weight: var(--font-semibold);
+}
+
+.fieldy-template-updated {
+	font-size: var(--font-ui-smaller);
+	font-weight: normal;
+}
+
+.fieldy-card-line {
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-state-connected {
+	color: var(--text-success);
+}
+
+.fieldy-state-error,
+.fieldy-state-not-configured {
+	color: var(--text-error);
+}
+
+.fieldy-card-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.fieldy-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.fieldy-chip {
+	padding: 0 var(--size-4-2);
+	border-left: 3px solid var(--fieldy-chip-color, var(--interactive-accent));
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-template {
+	padding: var(--size-2-2) 0;
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-template summary {
+	cursor: pointer;
+	font-weight: var(--font-medium);
+}
+
+.fieldy-template-section {
+	margin-top: var(--size-2-3);
+	font-weight: var(--font-semibold);
+}
+
+.fieldy-template-prompt {
+	margin: var(--size-2-1) 0;
+	color: var(--text-muted);
+	white-space: pre-wrap;
+}
+
+/* Edited notes */
+/* Edited notes: compact, searchable list with bulk actions. */
+.fieldy-edited-toolbar,
+.fieldy-edited-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	align-items: center;
+}
+
+.fieldy-edited-search {
+	flex: 1;
+	min-width: 12rem;
+}
+
+.fieldy-edited-bar {
+	margin-top: var(--size-4-2);
+	padding: var(--size-2-2) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-edited-count {
+	flex: 1;
+	color: var(--text-muted);
+}
+
+.fieldy-edited-list {
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.fieldy-edited-item {
+	display: flex;
+	gap: var(--size-4-2);
+	align-items: flex-start;
+	padding: var(--size-2-3) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.fieldy-edited-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.fieldy-edited-item > input[type='checkbox'] {
+	margin-top: 3px;
+}
+
+.fieldy-edited-main {
+	flex: 1;
+	min-width: 0;
+}
+
+.fieldy-edited-title {
+	font-weight: var(--font-semibold);
+	overflow-wrap: anywhere;
+}
+
+.fieldy-edited-meta,
+.fieldy-edited-reason {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-edited-reason {
+	color: var(--text-faint);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.fieldy-edited-actions {
+	display: flex;
+	gap: var(--size-2-1);
+	--icon-size: var(--icon-s);
+}
+
+.fieldy-edited-more {
+	margin: var(--size-4-2) auto;
+	display: block;
+}
+
+.fieldy-badge-edited {
+	background-color: rgba(var(--color-purple-rgb), 0.15);
+	color: var(--color-purple);
+}
+
+.fieldy-edited-hint {
+	margin-bottom: var(--size-2-2);
+	padding: var(--size-2-1) var(--size-4-2);
+	border-left: 3px solid var(--color-purple);
+	border-radius: var(--radius-s);
+	background-color: rgba(var(--color-purple-rgb), 0.08);
+	font-size: var(--font-ui-smaller);
+}
+
+@media (max-width: 600px) {
+	.fieldy-import-row {
+		grid-template-columns: auto 1fr;
+	}
+
+	.fieldy-import-date,
+	.fieldy-badge {
+		grid-column: 2;
+	}
+}
+
+/* ------------------------------------------------------------------
+ * Fieldy section banner in notes (Live Preview and reading view).
+ * The markers stay plain %% comments in the file; this is display only.
+ * ------------------------------------------------------------------ */
+/* Custom colours (settings) arrive as --fieldy-banner-synced/-edited/-paused on the body. */
+.fieldy-banner {
+	--fieldy-banner-accent: var(--fieldy-banner-synced, var(--color-blue));
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2) var(--size-4-2);
+	align-items: center;
+	margin: var(--size-4-2) 0;
+	padding: var(--size-2-2) var(--size-2-3) var(--size-2-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-left: 3px solid var(--fieldy-banner-accent);
+	border-radius: var(--radius-m);
+	background-color: color-mix(in srgb, var(--fieldy-banner-accent) 6%, transparent);
+	color: var(--text-muted);
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-tight);
+	white-space: normal;
+	cursor: default;
+	user-select: none;
+}
+
+.fieldy-banner.is-edited {
+	--fieldy-banner-accent: var(--fieldy-banner-edited, var(--color-orange));
+}
+
+.fieldy-banner.is-paused {
+	--fieldy-banner-accent: var(--fieldy-banner-paused, var(--text-faint));
+}
+
+/* Dark mode has its own custom colours: one that reads well on white is often too dark on black. */
+.theme-dark .fieldy-banner {
+	--fieldy-banner-accent: var(--fieldy-banner-synced-dark, var(--color-blue));
+}
+
+.theme-dark .fieldy-banner.is-edited {
+	--fieldy-banner-accent: var(--fieldy-banner-edited-dark, var(--color-orange));
+}
+
+.theme-dark .fieldy-banner.is-paused {
+	--fieldy-banner-accent: var(--fieldy-banner-paused-dark, var(--text-faint));
+}
+
+.fieldy-color-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-banner-icon {
+	display: inline-flex;
+	color: var(--fieldy-banner-accent);
+}
+
+.fieldy-banner-icon svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.fieldy-banner-title {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+
+.fieldy-banner-status {
+	padding: 0 var(--size-2-3);
+	border-radius: var(--radius-s);
+	background-color: color-mix(in srgb, var(--fieldy-banner-accent) 15%, transparent);
+	color: var(--fieldy-banner-accent);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
+}
+
+.fieldy-banner-meta {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-banner-actions {
+	display: inline-flex;
+	gap: var(--size-2-1);
+	margin-left: auto;
+}
+
+.fieldy-banner-actions .clickable-icon {
+	padding: var(--size-2-1);
+}
+
+.fieldy-banner-end .fieldy-banner-title {
+	font-weight: var(--font-medium);
+	color: var(--text-muted);
+}
+
+/* The block's hash and fingerprint are bookkeeping, not information: keep them out of the Properties view. */
+.metadata-property[data-property-key='fieldy_hash'],
+.metadata-property[data-property-key='fieldy_src'] {
+	display: none;
+}
+
+/* Card icons and the note badge act as buttons. */
+.fieldy-ind.is-actionable,
+.fieldy-badge.is-clickable {
+	cursor: pointer;
+	border-radius: var(--radius-s);
+}
+
+.fieldy-ind.is-actionable:hover {
+	opacity: 1;
+	background-color: var(--background-modifier-hover);
+}
+
+.fieldy-ind.is-actionable:focus-visible,
+.fieldy-badge.is-clickable:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+	outline: none;
+}
+
+.fieldy-badge.is-clickable:hover {
+	filter: brightness(1.1);
+	text-decoration: underline;
+}
+
+.fieldy-conv-more {
+	display: block;
+	margin: var(--size-4-2) auto;
+}
+
+/* ```fieldy``` code blocks */
+.fieldy-block-heading {
+	margin-bottom: var(--size-2-2);
+	font-weight: var(--font-semibold);
+}
+
+.fieldy-block-list {
+	margin-block: 0;
+}
+
+.fieldy-block-errors {
+	margin-bottom: var(--size-4-2);
+	padding: var(--size-2-3) var(--size-4-2);
+	border-left: 3px solid var(--text-error);
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-block-due {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-block-due.is-overdue {
+	color: var(--text-error);
+}
+
+.fieldy-block-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-2);
+}
+
+.fieldy-block-tile {
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+}
+
+.fieldy-block-value {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-bold);
+}
+
+.fieldy-block-line {
+	margin-top: var(--size-2-2);
+}
+
+.fieldy-mobile-note {
+	border-left: 3px solid var(--color-orange);
+	padding-left: var(--size-4-3);
+}
+
+.fieldy-icon-danger:hover {
+	color: var(--text-error);
+}
+
+/* Tasks tab: the count next to each "which tasks" icon. */
+.fieldy-filter-icon.fieldy-filter-counted {
+	gap: var(--size-2-1);
+	width: auto;
+	padding-inline: var(--size-2-2);
+}
+
+.fieldy-filter-count {
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}

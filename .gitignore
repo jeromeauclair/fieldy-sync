@@ -1,0 +1,29 @@
+# vscode
+.vscode
+
+# Intellij
+*.iml
+.idea
+
+# npm
+node_modules
+
+# Build output: main.js is uploaded to GitHub releases, not committed.
+main.js
+*.map
+coverage
+
+# Obsidian plugin data (holds sync state; never commit)
+data.json
+
+# Local development secrets (Fieldy API key for live tests). Never commit.
+.env
+.env.*
+!.env.example
+
+# Local tool folders
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db

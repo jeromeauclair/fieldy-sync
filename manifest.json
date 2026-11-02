@@ -1,0 +1,11 @@
+{
+	"id": "fieldy-sync",
+	"name": "Fieldy Sync",
+	"version": "1.0.0",
+	"minAppVersion": "1.14.0",
+	"description": "Sync your Fieldy conversations, summaries, tasks and transcripts into Markdown notes and browse them in a side panel, without duplicates or overwriting your edits.",
+	"author": "jeromeauclair",
+	"authorUrl": "https://github.com/jeromeauclair",
+	"fundingUrl": "https://buymeacoffee.com/jeromeauclair",
+	"isDesktopOnly": false
+}

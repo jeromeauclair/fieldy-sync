@@ -1,0 +1,50 @@
+{
+	"name": "fieldy-sync",
+	"version": "1.0.0",
+	"description": "Fieldy Sync: import and sync Fieldy conversations, summaries, tasks and transcripts into Obsidian notes.",
+	"main": "main.js",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc --noEmit && node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"lint": "eslint .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:live": "vitest run --config vitest.live.config.ts",
+		"check": "npm run typecheck && npm run lint && npm test && npm run build",
+		"version": "node version-bump.mjs && git add manifest.json versions.json"
+	},
+	"keywords": [
+		"obsidian",
+		"obsidian-plugin",
+		"fieldy"
+	],
+	"author": "jeromeauclair",
+	"license": "GPL-3.0-or-later",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jeromeauclair/fieldy-sync.git"
+	},
+	"homepage": "https://github.com/jeromeauclair/fieldy-sync#readme",
+	"bugs": {
+		"url": "https://github.com/jeromeauclair/fieldy-sync/issues"
+	},
+	"devDependencies": {
+		"@codemirror/state": "6.7.6",
+		"@codemirror/view": "6.43.13",
+		"@eslint/js": "9.39.5",
+		"@types/node": "22.20.5",
+		"esbuild": "0.28.2",
+		"eslint": "9.39.5",
+		"eslint-plugin-obsidianmd": "0.4.2",
+		"globals": "17.13.0",
+		"jiti": "2.7.0",
+		"moment": "2.31.0",
+		"obsidian": "1.14.4",
+		"typescript": "5.9.3",
+		"typescript-eslint": "8.72.1",
+		"vitest": "5.0.5"
+	}
+}
