@@ -1,8 +1,11 @@
-import { ConfirmationModal, moment, Notice, Platform, PluginSettingTab, setIcon, type App, type Setting, type SettingDefinition, type SettingDefinitionItem } from 'obsidian';
+import { ConfirmationModal, moment, Notice, Platform, PluginSettingTab, setIcon, setTooltip, type App, type Setting, type SettingDefinition, type SettingDefinitionItem, type SettingDefinitionList } from 'obsidian';
 import { RECORDING_SOURCES } from '../api/types';
 import { connectionLabel } from '../connection';
 import { renderTranscript } from '../markdown/TranscriptRenderer';
 import { EditedNotesModal } from '../ui/EditedNotesModal';
+import { PrivateNotesModal } from '../ui/PrivateNotesModal';
+import { privacyRules } from '../privacy/privacy';
+import { DAY_LETTER, DAY_SHORT, describeTimeRule, describeTimeRules, TIME_RULE_OPS, WEEK_ORDER, type TimeRule, type TimeRuleOp } from '../utils/timeRules';
 import { describeError } from '../utils/errors';
 import { applyFilenamePattern, joinVaultPath, sanitizeFolderPath, subfolderFor } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
@@ -39,6 +42,8 @@ function help(...paragraphs: Part[][]): DocumentFragment {
 
 const formatDate = (iso: string, format: string) => moment(iso).format(format);
 
+type BannerColorKey = 'bannerColorSynced' | 'bannerColorEdited' | 'bannerColorPaused' | 'bannerColorSyncedDark' | 'bannerColorEditedDark' | 'bannerColorPausedDark';
+
 export class FieldySettingsTab extends PluginSettingTab {
 	constructor(
 		app: App,
@@ -46,6 +51,13 @@ export class FieldySettingsTab extends PluginSettingTab {
 	) {
 		super(app, plugin);
 		this.icon = 'mic';
+		// The rule forms have one row per rule: rebuild when the number of rules changed elsewhere
+		// (another device, a reload). Edits within a row never rebuild, so typing keeps its focus.
+		plugin.registerEvent(
+			plugin.events.on('settings-changed', () => {
+				if (this.ruleCounts() !== this.builtRuleCounts) this.update();
+			}),
+		);
 	}
 
 	override getControlValue(key: string): unknown {
@@ -59,7 +71,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 	}
 
 	/** One banner state's custom colours: one for light mode, one for dark mode. */
-	private bannerColorRow(name: string, desc: string, light: keyof FieldySyncSettings, dark: keyof FieldySyncSettings): SettingDefinition {
+	private bannerColorRow(name: string, desc: string, light: BannerColorKey, dark: BannerColorKey): SettingDefinition {
 		const s = () => this.plugin.settings;
 		return {
 			name,
@@ -73,7 +85,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 				] as const) {
 					setting.controlEl.createSpan({ cls: 'fieldy-color-label', text: label });
 					setting.addColorPicker((picker) =>
-						picker.setValue(String(s()[key])).onChange(async (value) => {
+						picker.setValue(s()[key]).onChange(async (value) => {
 							await this.plugin.updateSetting(key, value);
 						}),
 					);
@@ -111,6 +123,100 @@ export class FieldySettingsTab extends PluginSettingTab {
 		const sample = { title: 'Weekly sync with Acme', startTime, id: '2f0c6d2e-1b7a' };
 		const folder = joinVaultPath(sanitizeFolderPath(s.folder), subfolderFor(s.subfolders, startTime, formatDate, s.subfolderFormat));
 		return `${joinVaultPath(folder, applyFilenamePattern(s.filenamePattern, sample, s.filenameDateFormat, formatDate))}.md`;
+	}
+
+	private privacyPreview(): string {
+		const rules = privacyRules(this.plugin.settings);
+		const line = (label: string, list: { value: string }[]) => (list.length > 0 ? `${label}: ${list.map((r) => r.value).join(', ')}` : null);
+		const lines = [
+			line('Keywords', rules.keywords),
+			line('Speakers', rules.speakers),
+			line('Places', rules.places),
+			line('Templates', rules.templates),
+			rules.times.length > 0 ? `Times: ${describeTimeRules(rules.times)}` : null,
+		].filter((l): l is string => l !== null);
+		if (lines.length === 0) return 'No filter: every conversation is synced.';
+		if (rules.searchTranscript && (rules.keywords.length > 0 || rules.speakers.length > 0)) lines.push('Keywords and speakers are also looked for in transcripts.');
+		const kept = this.plugin.syncState.privateNotes().length;
+		if (kept > 0 && this.plugin.settings.deletePrivateNotes) lines.push(`${kept} note${kept === 1 ? '' : 's'} from before will be moved to the trash at the next sync.`);
+		else if (kept > 0) lines.push(`${kept} note${kept === 1 ? '' : 's'} from before ${kept === 1 ? 'is' : 'are'} kept but no longer updated.`);
+		return lines.join('\n');
+	}
+
+	/**
+	 * A time filter as a form: one rule per row (days, from, to), combined
+	 * from top to bottom with the operator chosen at the start of each row.
+	 */
+	private timeRulesList(key: 'syncTimeRules' | 'privateTimeRules', heading: string, emptyState: string, fresh: () => TimeRule): SettingDefinitionList {
+		const rules = () => this.plugin.settings[key];
+		const save = async (next: TimeRule[], rebuild: boolean) => {
+			await this.plugin.updateSetting(key, next);
+			if (rebuild) this.update();
+		};
+		return {
+			type: 'list',
+			heading,
+			emptyState,
+			addItem: {
+				name: 'Add a rule',
+				action: () => void save([...rules(), fresh()], true),
+			},
+			onDelete: (index: number) => void save(rules().filter((_, i) => i !== index), true),
+			items: rules().map((rule, index): SettingDefinition => ({
+				name: index === 0 ? describeTimeRule(rule) : `${TIME_RULE_OPS[rule.op]} ${describeTimeRule(rule)}`,
+				searchable: false,
+				render: (setting: Setting) => this.renderTimeRule(setting, index, rules, (next) => save(next, false)),
+			})),
+		};
+	}
+
+	private renderTimeRule(setting: Setting, index: number, rules: () => TimeRule[], save: (next: TimeRule[]) => Promise<void>): void {
+		setting.settingEl.addClass('fieldy-time-rule');
+		const current = () => rules()[index];
+		const change = async (patch: Partial<TimeRule>) => {
+			const rule = current();
+			if (!rule) return;
+			const next = rules().map((r, i) => (i === index ? { ...r, ...patch } : r));
+			await save(next);
+			const updated = next[index]!;
+			setting.setName(index === 0 ? describeTimeRule(updated) : `${TIME_RULE_OPS[updated.op]} ${describeTimeRule(updated)}`);
+		};
+		const rule = current();
+		if (!rule) return;
+		if (index > 0) {
+			setting.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(TIME_RULE_OPS)
+					.setValue(rule.op)
+					.onChange((value) => void change({ op: value as TimeRuleOp })),
+			);
+		}
+		const days = setting.controlEl.createDiv({ cls: 'fieldy-time-days' });
+		for (const day of WEEK_ORDER) {
+			const button = days.createEl('button', { cls: 'fieldy-time-day', text: DAY_LETTER[day], attr: { 'aria-label': DAY_SHORT[day] } });
+			setTooltip(button, `${DAY_SHORT[day]} (no day selected: every day)`);
+			button.toggleClass('is-active', rule.days.includes(day));
+			button.setAttribute('aria-pressed', String(rule.days.includes(day)));
+			button.addEventListener('click', () => {
+				const now = current()?.days ?? [];
+				const next = now.includes(day) ? now.filter((d) => d !== day) : [...now, day].sort();
+				button.toggleClass('is-active', next.includes(day));
+				button.setAttribute('aria-pressed', String(next.includes(day)));
+				void change({ days: next });
+			});
+		}
+		for (const [field, label] of [
+			['from', 'From'],
+			['to', 'To'],
+		] as const) {
+			setting.addText((text) => {
+				text.inputEl.type = 'time';
+				text.inputEl.addClass('fieldy-time-input');
+				text.inputEl.setAttribute('aria-label', `${label} (empty: ${field === 'from' ? 'from midnight' : 'until midnight'})`);
+				setTooltip(text.inputEl, `${label}; leave both empty for the whole day. A range ending earlier runs past midnight.`);
+				text.setValue(rule[field]).onChange((value) => void change({ [field]: value }));
+			});
+		}
 	}
 
 	private folderPreview(): string {
@@ -164,8 +270,16 @@ export class FieldySettingsTab extends PluginSettingTab {
 		return body.join('\n');
 	}
 
+	/** Number of time rules the current definitions were built with. */
+	private builtRuleCounts = '';
+
+	private ruleCounts(): string {
+		return `${this.plugin.settings.syncTimeRules.length}/${this.plugin.settings.privateTimeRules.length}`;
+	}
+
 	override getSettingDefinitions(): SettingDefinitionItem[] {
 		const s = () => this.plugin.settings;
+		this.builtRuleCounts = this.ruleCounts();
 		return [
 			{
 				name: 'Mobile: not tested yet',
@@ -348,6 +462,20 @@ export class FieldySettingsTab extends PluginSettingTab {
 							},
 						],
 					},
+					{
+						type: 'group',
+						items: [
+							{
+								name: 'Only sync conversations recorded at',
+								aliases: ['hours', 'time', 'days', 'schedule', 'working hours'],
+								desc: help(
+									['Without rules, conversations recorded at any time are synced. With rules, sync only handles conversations that started at a matching time: the others get no note and their existing notes are not updated, as if outside the sync window. The import dialog and the side panel still show every conversation.'],
+									['One rule per row: pick days (none for every day) and a time range (both empty for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: or adds times, and keeps only times matching both, except removes times. Local time.'],
+								),
+							},
+						],
+					},
+					this.timeRulesList('syncTimeRules', 'Rules', 'No rule: any time.', () => ({ op: 'or', days: [1, 2, 3, 4, 5], from: '08:00', to: '18:00' })),
 				],
 			},
 			{
@@ -683,6 +811,112 @@ export class FieldySettingsTab extends PluginSettingTab {
 			},
 			{
 				type: 'page',
+				name: 'Privacy',
+				desc: 'Keep some conversations out of your vault.',
+				items: [
+					{
+						type: 'group',
+						items: [
+							{
+								name: 'How privacy filters work',
+								searchable: false,
+								desc: help(
+									['A conversation that matches any filter below is private: sync creates no note for it, its tasks are hidden, and it is left out of exports. In the side panel it shows as a short "Private conversation" card with its date and the filter that matched, and nothing else.'],
+									['A note imported before you added a filter stays in your vault exactly as it is, but is no longer updated; its banner says "Private". Nothing is ever deleted for you.'],
+									['One entry per line (or separated by commas). Case and accents are ignored. Keywords and places match whole words; end one with * to match words starting with it (therap* matches therapy and therapist).'],
+								),
+							},
+							{
+								name: 'Private keywords',
+								aliases: ['privacy', 'exclude', 'hide', 'filter'],
+								desc: help(['Words or phrases looked for in the title, summary, memory content, keywords and quotes.']),
+								control: { type: 'textarea', key: 'privateKeywords', placeholder: 'doctor\ntherap*\nsalary', rows: 3 },
+							},
+							{
+								name: 'Private speakers',
+								aliases: ['privacy', 'people'],
+								desc: help(['Speaker names, exactly as Fieldy shows them (case and accents aside).']),
+								control: { type: 'textarea', key: 'privateSpeakers', placeholder: 'Dr Martin', rows: 2 },
+							},
+							{
+								name: 'Private places',
+								aliases: ['privacy', 'location', 'address'],
+								desc: help(['Words of the address where the conversation was recorded: street, city, postal code or country.']),
+								control: { type: 'textarea', key: 'privatePlaces', placeholder: '12 Rue de la Paix\nHospital', rows: 2 },
+							},
+							{
+								name: 'Private templates',
+								aliases: ['privacy', 'memory template'],
+								desc: help(['Names of Fieldy memory templates (see the Account tab of the side panel). Every conversation summarised with one of them is private.']),
+								control: { type: 'textarea', key: 'privateTemplates', placeholder: 'Medical visit', rows: 2 },
+							},
+							{
+								name: 'Also search transcripts',
+								aliases: ['privacy', 'transcript'],
+								desc: help(
+									['Also looks for private keywords and speakers in what was said, not only in what Fieldy summarised. Off by default.'],
+									[
+										{ strong: 'This means a large volume of requests:' },
+										' every conversation\'s transcript must be downloaded once to be checked (one request each, also when the transcript is not written into notes). A sync over a long period, an import of your history or browsing older conversations in the panel can take many minutes, within Fieldy\'s limit of 100 requests per minute. Results are remembered, so each transcript is only checked again when its conversation or these filters change. Until a conversation is checked, the panel hides it.',
+									],
+								),
+								control: { type: 'toggle', key: 'privacySearchTranscript' },
+							},
+							{
+								name: 'Show titles of private conversations',
+								aliases: ['privacy', 'title', 'brief'],
+								desc: help(['Private cards in the side panel (and rows in the import dialog) show the conversation\'s title, and the brief icon for brief ones, instead of only "Private conversation". Nothing else is shown. Off by default.']),
+								control: { type: 'toggle', key: 'showPrivateTitles' },
+							},
+							{
+								name: 'Move notes of private conversations to the trash',
+								aliases: ['privacy', 'delete', 'remove'],
+								desc: help(
+									['Off (default): a note imported before a filter matched its conversation is kept as it is, but no longer updated.'],
+									['On: sync moves such notes to the trash (Obsidian\'s or your system\'s, as set in Files and links), including any text you added to them. If you remove the filter later, the conversation is imported again like a new one.'],
+								),
+								// Its own switch, so a cancelled confirmation can put it back off on screen too.
+								render: (setting: Setting) => {
+									setting.addToggle((toggle) =>
+										toggle.setValue(this.plugin.settings.deletePrivateNotes).onChange(async (on) => {
+											if (on && !(await this.confirmDeletePrivateNotes())) {
+												toggle.setValue(false);
+												return;
+											}
+											await this.plugin.updateSetting('deletePrivateNotes', on);
+										}),
+									);
+								},
+							},
+							{
+								name: 'Notes of private conversations',
+								aliases: ['privacy'],
+								desc: help(['Notes imported before a filter matched their conversation. Sync keeps them as they are; review them to delete the ones you do not want.']),
+								render: (setting: Setting) => {
+									setting.addButton((button) => button.setButtonText('Review').onClick(() => new PrivateNotesModal(this.app, this.plugin).open()));
+								},
+							},
+							this.livePreview('Active filters', 'What the filters above currently catch:', () => this.privacyPreview(), true),
+						],
+					},
+					{
+						type: 'group',
+						items: [
+							{
+								name: 'Private times',
+								aliases: ['privacy', 'hours', 'time', 'days', 'lunch'],
+								desc: help(
+									['A conversation is private when any moment of it matches these rules, for example a lunch break or the weekend.'],
+									['One rule per row: pick days (none for every day) and a time range (both empty for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: or adds times, and keeps only times matching both, except removes times. Local time.'],
+								),
+							},
+						],
+					},
+					this.timeRulesList('privateTimeRules', 'Rules', 'No rule: no conversation is private because of its time.', () => ({ op: 'or', days: [], from: '12:00', to: '13:00' })),
+				],
+			},
+			{
+				type: 'page',
 				name: 'Advanced',
 				desc: 'Requests, notifications and logging.',
 				items: [
@@ -809,6 +1043,34 @@ export class FieldySettingsTab extends PluginSettingTab {
 				],
 			},
 		];
+	}
+
+	/** Asks before turning on the deletion of private conversations' notes. */
+	private confirmDeletePrivateNotes(): Promise<boolean> {
+		const kept = this.plugin.syncState.privateNotes().length;
+		return new Promise((resolve) => {
+			let answered = false;
+			const modal = new ConfirmationModal(this.app)
+				.setTitle('Move notes of private conversations to the trash?')
+				.setContent(
+					`From the next sync, notes whose conversation is private are moved to the trash, with any text you added to them.${kept > 0 ? ` ${kept} note${kept === 1 ? ' is' : 's are'} already private and will go first.` : ''}`,
+				)
+				.addButton((button) =>
+					button
+						.setButtonText('Turn on')
+						.setDestructive()
+						.setCta()
+						.onClick(() => {
+							answered = true;
+							resolve(true);
+						}),
+				)
+				.addCancelButton();
+			modal.onClose = () => {
+				if (!answered) resolve(false);
+			};
+			modal.open();
+		});
 	}
 
 	private confirmReset(): void {

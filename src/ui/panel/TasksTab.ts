@@ -3,6 +3,7 @@ import type { FieldyTask, TaskChanges, TaskStatus } from '../../api/types';
 import { taskLine } from '../../markdown/ConversationRenderer';
 import { obsidianTaskLine, type TasksFormat } from '../../markdown/obsidianTasks';
 import { inlineText } from '../../markdown/sanitize';
+import { sleep } from '../../utils/async';
 import { describeError, isCancellation } from '../../utils/errors';
 import { readTasksFormat, tasksPluginEnabled } from '../tasksPlugin';
 import { iconButton, noKeyMessage } from './ConversationsTab';
@@ -47,6 +48,9 @@ const FILTER_STATUSES: Record<TaskFilter, readonly TaskStatus[]> = {
 	dismissed: DISMISSED,
 };
 
+/** Background privacy checks: one conversation every 1.5 s, pausing while a sync runs or requests queue up. */
+const PRIVACY_SPACING_MS = 1_500;
+const PRIVACY_BACKOFF_MS = 5_000;
 const TASK_FILTERS = Object.keys(FILTER_LABELS) as TaskFilter[];
 
 const STATUS_ICONS: Record<TaskStatus, string> = {
@@ -105,6 +109,12 @@ export class TasksTab {
 	private shown = RENDER_BATCH;
 	private readonly debouncedRender = debounce(() => this.renderList(), SEARCH_DELAY_MS, true);
 	private paths = new Map<string, string>();
+	/** Conversations to look up before their tasks can be shown (privacy filters). */
+	private privacyQueue: string[] = [];
+	private privacyPumping = false;
+	private privacyFailed = false;
+	/** Conversations Fieldy no longer has: their tasks have no conversation to keep private. */
+	private readonly missingConversations = new Set<string>();
 	private iconsEl!: HTMLElement;
 	private listEl!: HTMLElement;
 	private infoEl!: HTMLElement;
@@ -143,6 +153,75 @@ export class TasksTab {
 		if (!this.loaded && !this.loading) void this.load(false);
 	}
 
+	/** Settings changed: privacy filters may now hide other tasks. */
+	onSettingsChanged(): void {
+		if (!this.loaded) return;
+		this.privacyFailed = false;
+		this.queuePrivacyChecks();
+		this.renderList();
+	}
+
+	/**
+	 * Whether a task may be shown: tasks of private conversations never are,
+	 * and while a conversation is not checked yet, its tasks wait.
+	 */
+	private taskPrivacy(task: FieldyTask): 'public' | 'private' | 'pending' {
+		if (!task.memoryId || !this.plugin.privacy.active() || this.missingConversations.has(task.memoryId)) return 'public';
+		const conversation = this.view.data.conversations.get(task.memoryId);
+		return conversation ? this.plugin.privacy.check(conversation).state : 'pending';
+	}
+
+	/** Looks up, in the background, the conversations of tasks that wait for a privacy check. */
+	private queuePrivacyChecks(): void {
+		if (!this.plugin.privacy.active() || this.privacyFailed) return;
+		const queued = new Set(this.privacyQueue);
+		for (const task of this.tasks) {
+			if (task.memoryId && !queued.has(task.memoryId) && this.taskPrivacy(task) === 'pending') {
+				queued.add(task.memoryId);
+				this.privacyQueue.push(task.memoryId);
+			}
+		}
+		void this.pumpPrivacyChecks();
+	}
+
+	private async pumpPrivacyChecks(): Promise<void> {
+		if (this.privacyPumping) return;
+		this.privacyPumping = true;
+		const signal = this.view.data.signal;
+		const data = this.view.data;
+		try {
+			await this.plugin.privacy.prepare(signal);
+			this.renderList();
+			while (this.privacyQueue.length > 0 && !signal.aborted) {
+				if (this.plugin.engine.isRunning || this.plugin.rateLimiterBusy) {
+					await sleep(PRIVACY_BACKOFF_MS, signal);
+					continue;
+				}
+				const id = this.privacyQueue.shift();
+				if (!id) continue;
+				let conversation = data.conversations.get(id);
+				if (!conversation) {
+					conversation = (await this.plugin.client.getConversation(id, { signal })) ?? undefined;
+					if (conversation) data.remember([conversation]);
+				}
+				if (!conversation) this.missingConversations.add(id);
+				else if (this.plugin.privacy.check(conversation).state === 'pending') await this.plugin.privacy.resolve(conversation, signal);
+				this.plugin.reportRequestOutcome();
+				this.renderList();
+				await sleep(PRIVACY_SPACING_MS, signal);
+			}
+		} catch (err) {
+			if (!isCancellation(err)) {
+				this.plugin.reportRequestOutcome(err);
+				this.privacyQueue = [];
+				this.privacyFailed = true;
+				this.renderList();
+			}
+		} finally {
+			this.privacyPumping = false;
+		}
+	}
+
 	async load(force: boolean): Promise<void> {
 		if (!this.plugin.hasApiKey()) {
 			this.renderList();
@@ -156,6 +235,8 @@ export class TasksTab {
 			this.tasks = tasks;
 			this.paths = paths;
 			this.loaded = true;
+			this.privacyFailed = false;
+			this.queuePrivacyChecks();
 		} catch (err) {
 			if (!isCancellation(err)) new Notice(describeError(err));
 		} finally {
@@ -181,7 +262,7 @@ export class TasksTab {
 		const statuses = shown.flatMap((key) => FILTER_STATUSES[key]);
 		const completedOnly = shown.length === 1 && shown[0] === 'completed';
 		return this.tasks
-			.filter((t) => statuses.includes(t.status) && this.matchesSearch(t))
+			.filter((t) => statuses.includes(t.status) && this.taskPrivacy(t) === 'public' && this.matchesSearch(t))
 			.sort((a, b) => {
 				if (completedOnly) return (b.completionDate ?? '').localeCompare(a.completionDate ?? '');
 				return (a.date ?? '￿').localeCompare(b.date ?? '￿') || a.title.localeCompare(b.title);
@@ -201,7 +282,7 @@ export class TasksTab {
 		const icons = this.iconsEl;
 		icons.empty();
 		for (const key of TASK_FILTERS) {
-			const count = this.loaded ? this.tasks.filter((t) => FILTER_STATUSES[key].includes(t.status)).length : null;
+			const count = this.loaded ? this.tasks.filter((t) => FILTER_STATUSES[key].includes(t.status) && this.taskPrivacy(t) === 'public').length : null;
 			const rule = this.rules[key];
 			const name = `${FILTER_LABELS[key]}${count === null ? '' : ` (${count})`}`;
 			const hint =
@@ -268,6 +349,7 @@ export class TasksTab {
 			const what = shown.length === 1 ? `No ${FILTER_LABELS[shown[0] as TaskFilter].toLowerCase()}.` : 'No task matches these filters.';
 			this.infoEl.setText(this.search ? 'No task matches your search.' : what);
 		}
+		this.renderPrivacyNote();
 		// Group headings count every task in the group, drawn or not.
 		let budget = this.shown;
 		for (const [title, list] of this.groups(tasks)) {
@@ -294,6 +376,30 @@ export class TasksTab {
 			const copyAll = this.footerEl.createEl('button', { text: 'Copy all…' });
 			copyAll.addEventListener('click', (evt) => this.formatMenu(evt, tasks, 'copy'));
 		}
+	}
+
+	/** How many tasks the privacy filters hide, or are still checking. */
+	private renderPrivacyNote(): void {
+		if (!this.loaded || !this.plugin.privacy.active()) return;
+		const statuses = this.shownFilters().flatMap((key) => FILTER_STATUSES[key]);
+		let hidden = 0;
+		let waiting = 0;
+		for (const task of this.tasks) {
+			if (!statuses.includes(task.status)) continue;
+			const state = this.taskPrivacy(task);
+			if (state === 'private') hidden++;
+			else if (state === 'pending') waiting++;
+		}
+		const parts: string[] = [];
+		if (hidden > 0) parts.push(`${hidden} task${hidden === 1 ? '' : 's'} hidden: from private conversations.`);
+		if (waiting > 0) {
+			parts.push(
+				this.privacyFailed
+					? `${waiting} more hidden: their conversations could not be checked against your privacy filters (reload to try again).`
+					: `Checking the privacy filters for ${waiting} more…`,
+			);
+		}
+		if (parts.length > 0) this.infoEl.createDiv({ cls: 'fieldy-muted fieldy-task-privacy', text: parts.join(' ') });
 	}
 
 	private renderTask(task: FieldyTask): void {

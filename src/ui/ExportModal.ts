@@ -197,9 +197,26 @@ export class ExportModal extends Modal {
 			}
 			const withTranscript = this.includeTranscripts ? conversations.filter((c) => !c.locked).length : 0;
 			let loaded = 0;
+			let privateCount = 0;
+			const privacy = this.plugin.privacy;
+			await privacy.prepare(signal);
 			for (const conversation of conversations) {
 				let transcript = null;
-				if (this.includeTranscripts && !conversation.locked) {
+				// Private conversations never leave Fieldy; an unknown one is checked first (its transcript is reused below).
+				let verdict = privacy.check(conversation);
+				if (verdict.state === 'pending') {
+					this.status(`Checking privacy filters… ${exportItems.length + privateCount + 1} of ${conversations.length}`);
+					const resolved = await privacy.resolve(conversation, signal);
+					verdict = resolved.verdict;
+					if (this.includeTranscripts && !conversation.locked) transcript = resolved.transcript;
+				}
+				if (verdict.state === 'private') {
+					privateCount++;
+					continue;
+				}
+				if (this.includeTranscripts && !conversation.locked && transcript) {
+					loaded++;
+				} else if (this.includeTranscripts && !conversation.locked) {
 					this.status(`Loading transcripts… ${loaded + 1} of ${withTranscript} (${this.timeLeft(withTranscript - loaded)}). Cancel stops without saving.`);
 					loaded++;
 					transcript = await client.listTranscriptions(
@@ -215,6 +232,10 @@ export class ExportModal extends Modal {
 				exportItems.push({ conversation, tasks: byConversation.get(conversation.id) ?? [], transcript });
 			}
 			this.plugin.reportRequestOutcome();
+			if (exportItems.length === 0) {
+				this.status('Every conversation in this period is private, so there is nothing to export.');
+				return;
+			}
 
 			this.status('Writing the file…');
 			const exportedAt = new Date().toISOString();
@@ -226,7 +247,8 @@ export class ExportModal extends Modal {
 			});
 			const file = await this.write(text, exportedAt);
 			const count = `${exportItems.length} conversation${exportItems.length === 1 ? '' : 's'}`;
-			this.status(`Exported ${count} to ${file.path}.`);
+			const leftOut = privateCount > 0 ? ` ${privateCount} private conversation${privateCount === 1 ? ' was' : 's were'} left out.` : '';
+			this.status(`Exported ${count} to ${file.path}.${leftOut}`);
 			new Notice(`Fieldy export saved: ${file.path}`);
 			if (file.extension === 'md') await this.app.workspace.getLeaf(true).openFile(file);
 		} catch (err) {

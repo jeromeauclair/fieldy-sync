@@ -15,6 +15,8 @@ import { sleep } from '../../utils/async';
 import { durationMinutes, formatDuration, HISTORY_START_ISO } from '../../utils/dates';
 import { describeError, isCancellation } from '../../utils/errors';
 import { FIELDY_REFERRAL_URL } from '../../settings/settings';
+import type { PrivacyVerdict } from '../../privacy/PrivacyGuard';
+import { describeMatches } from '../../privacy/privacy';
 import type { LocalStatus } from '../../main';
 import { obsidianEventLine, obsidianTaskLine } from '../../markdown/obsidianTasks';
 import { readTasksFormat, tasksPluginEnabled } from '../tasksPlugin';
@@ -107,6 +109,8 @@ const TRANSCRIPT_PREVIEW_LINES = 60;
 /** Background share-link checks: one every 2 s (at most 30 per minute), pausing while busy. */
 const LINK_CHECK_SPACING_MS = 2_000;
 const LINK_CHECK_BACKOFF_MS = 5_000;
+/** Background transcript checks for privacy filters: one every 1.5 s (at most 40 per minute), pausing while busy. */
+const PRIVACY_CHECK_SPACING_MS = 1_500;
 /** Cards drawn at a time; more are added as the list is scrolled to its end. */
 const RENDER_BATCH = 100;
 const SEARCH_DELAY_MS = 150;
@@ -198,6 +202,11 @@ export class ConversationsTab {
 	private sourcesCheckedFrom: string | null = null;
 	private sourcesPumping = false;
 	private readonly sourceEls = new Map<string, HTMLElement>();
+	/** Conversations whose privacy still needs a request (template names, transcript), checked in the background. */
+	private privacyQueue: string[] = [];
+	private privacyPumping = false;
+	/** The privacy check failed (offline...); those cards stay hidden until a reload. */
+	private privacyFailed = false;
 
 	private listEl!: HTMLElement;
 	private contentFiltersEl!: HTMLElement;
@@ -249,6 +258,15 @@ export class ConversationsTab {
 		else void this.reload();
 	}
 
+	/** Settings changed: privacy filters may now match other cards. */
+	onSettingsChanged(): void {
+		// Without privacy filters the lock icon is gone, so its rule must not keep hiding cards.
+		if (!this.plugin.privacy.active()) this.filters.privacy = null;
+		if (!this.loaded) return;
+		this.queuePrivacyChecks(this.items);
+		this.renderList();
+	}
+
 	/** Called when the tab becomes visible. */
 	onShow(): void {
 		if (!this.loaded && !this.loading) void this.reload();
@@ -266,6 +284,8 @@ export class ConversationsTab {
 		this.byId.clear();
 		this.exhausted = false;
 		this.loaded = false;
+		// A page of the previous period may still be loading: its result is dropped, and it must not block this load.
+		this.loading = false;
 		this.shown = RENDER_BATCH;
 		this.expanded.clear();
 		this.forgetRows();
@@ -280,6 +300,8 @@ export class ConversationsTab {
 			{ signal: this.view.data.signal },
 		);
 		this.linkQueue = [];
+		this.privacyQueue = [];
+		this.privacyFailed = false;
 		this.sources.clear();
 		this.sourcesCheckedFrom = null;
 		void this.loadTaskCounts();
@@ -306,7 +328,7 @@ export class ConversationsTab {
 
 	/** Checks share links in the background, one at a time, without crowding out other requests. */
 	private queueLinkChecks(ids: readonly string[], first = false): void {
-		const pending = ids.filter((id) => !this.linkStates.has(id));
+		const pending = ids.filter((id) => !this.linkStates.has(id) && this.isPublic(id));
 		const added = new Set(pending);
 		if (first) this.linkQueue = [...pending, ...this.linkQueue.filter((id) => !added.has(id))];
 		else {
@@ -346,6 +368,51 @@ export class ConversationsTab {
 		} finally {
 			this.linkPumping = false;
 		}
+	}
+
+	/** Checks, in the background, the conversations whose privacy needs a request. */
+	private queuePrivacyChecks(conversations: readonly FieldyConversation[]): void {
+		if (!this.plugin.privacy.active()) return;
+		const queued = new Set(this.privacyQueue);
+		for (const c of conversations) if (this.privacy(c).state === 'pending' && !queued.has(c.id)) this.privacyQueue.push(c.id);
+		void this.pumpPrivacyChecks();
+	}
+
+	private async pumpPrivacyChecks(): Promise<void> {
+		if (this.privacyPumping) return;
+		this.privacyPumping = true;
+		const signal = this.view.data.signal;
+		const generation = this.generation;
+		try {
+			// Template names first: one request settles every card that only waits for them.
+			await this.plugin.privacy.prepare(signal);
+			this.renderList();
+			while (this.privacyQueue.length > 0 && !signal.aborted && generation === this.generation) {
+				if (this.plugin.engine.isRunning || this.plugin.rateLimiterBusy) {
+					await sleep(LINK_CHECK_BACKOFF_MS, signal);
+					continue;
+				}
+				const id = this.privacyQueue.shift();
+				const c = id ? this.byId.get(id) : undefined;
+				if (!c || this.privacy(c).state !== 'pending') continue;
+				await this.plugin.privacy.resolve(c, signal);
+				this.plugin.reportRequestOutcome();
+				this.renderList();
+				await sleep(PRIVACY_CHECK_SPACING_MS, signal);
+			}
+		} catch (err) {
+			if (!isCancellation(err)) {
+				// Offline or another failure: stop here; unchecked cards stay hidden.
+				this.plugin.reportRequestOutcome(err);
+				this.privacyQueue = [];
+				this.privacyFailed = true;
+				this.forgetRows();
+				this.renderList();
+			}
+		} finally {
+			this.privacyPumping = false;
+		}
+		if (this.privacyQueue.length > 0 && generation !== this.generation) void this.pumpPrivacyChecks();
 	}
 
 	private sourcesOf(c: FieldyConversation): ReadonlySet<RecordingSource> | undefined {
@@ -474,6 +541,7 @@ export class ConversationsTab {
 				this.items.push(...fresh);
 				for (const c of fresh) this.byId.set(c.id, c);
 				this.view.data.remember(fresh);
+				this.queuePrivacyChecks(fresh);
 				// The share-link filter needs every loaded card checked; otherwise only cards that come into view are.
 				if (this.filters.content.link) this.queueLinkChecks(fresh.filter((c) => !c.locked).map((c) => c.id));
 				void this.checkSources();
@@ -522,6 +590,7 @@ export class ConversationsTab {
 			this.items.unshift(conversation);
 			this.byId.set(conversation.id, conversation);
 			this.view.data.remember([conversation]);
+			this.queuePrivacyChecks([conversation]);
 			await this.refreshLocal(false);
 		}
 		this.search = '';
@@ -538,7 +607,20 @@ export class ConversationsTab {
 		return this.statuses.get(c.id) ?? 'new';
 	}
 
+	private privacy(c: FieldyConversation): PrivacyVerdict {
+		return this.plugin.privacy.check(c);
+	}
+
+	private isPublic(id: string): boolean {
+		const c = this.byId.get(id);
+		return c !== undefined && this.privacy(c).state === 'public';
+	}
+
 	private matches(c: FieldyConversation): boolean {
+		// Private (and not yet checked) conversations never match a search or another filter: that would reveal their content.
+		const hidden = this.privacy(c).state !== 'public';
+		if (this.filters.privacy === 'has') return hidden;
+		if (hidden) return this.filters.privacy === null && !this.isFiltering();
 		if (!matchesFilters(c, this.indicatorsFor(c), this.status(c), this.filters, this.sourcesOf(c))) return false;
 		if (!this.search) return true;
 		const haystack = [c.title, c.summary, ...c.keywords, ...c.speakers].join(' ').toLowerCase();
@@ -596,7 +678,9 @@ export class ConversationsTab {
 	/** What a card shows besides its icons (which update in place); a change redraws it. */
 	private rowKey(c: FieldyConversation, synced: SyncedSets): string {
 		const mark = synced.created.has(c.id) ? 'new' : synced.updated.has(c.id) ? 'updated' : '';
-		return [this.status(c), this.paths.get(c.id) ?? '', mark, this.expanded.has(c.id) ? 'open' : ''].join('|');
+		const privacy = this.privacy(c);
+		const secret = `${privacy.state === 'private' ? `private:${describeMatches(privacy.matches)}` : privacy.state}${this.plugin.settings.showPrivateTitles ? ':titled' : ''}`;
+		return [secret, this.status(c), this.paths.get(c.id) ?? '', mark, this.expanded.has(c.id) ? 'open' : ''].join('|');
 	}
 
 	/** The last sync's created and updated ids as sets (rebuilt only when another sync finished). */
@@ -662,6 +746,8 @@ export class ConversationsTab {
 				const old = el;
 				this.dropRow(c.id);
 				el = this.renderRow(c, old);
+				// The new card took the old one's place; if that was the insertion point, it is now.
+				if (cursor === old) cursor = el;
 			} else if (!el) {
 				el = this.renderRow(c);
 			}
@@ -700,7 +786,34 @@ export class ConversationsTab {
 		}
 
 		// Recorded with: one source at a time (click again for any). Pointless when sync is limited to one source.
-		if (this.plugin.settings.recordingSource !== 'all') return;
+		if (this.plugin.settings.recordingSource === 'all') this.renderSourceFilters(icons);
+		if (this.plugin.privacy.active()) this.renderPrivacyFilter(icons);
+	}
+
+	/**
+	 * Private conversations: any → only them → none of them. Only them
+	 * ignores the search and the other filters, which cannot look inside a
+	 * private conversation.
+	 */
+	private renderPrivacyFilter(icons: HTMLElement): void {
+		icons.createSpan({ cls: 'fieldy-filter-sep' });
+		const rule = this.filters.privacy;
+		const count = this.items.filter((c) => this.privacy(c).state !== 'public').length;
+		const name = `Private conversations (${count} loaded)`;
+		const hint =
+			rule === 'has' ? `${name}: only these (click to hide them)`
+			: rule === 'lacks' ? `${name}: hidden (click for any)`
+			: `${name}: any (click for only these)`;
+		const button = iconButton(icons, 'lock', hint, () => {
+			this.filters.privacy = nextContentRule(this.filters.privacy ?? undefined) ?? null;
+			this.shown = RENDER_BATCH;
+			this.renderList();
+		});
+		button.addClass('fieldy-filter-icon', 'fieldy-filter-private', rule === 'has' ? 'is-on' : rule === 'lacks' ? 'is-lacks' : 'is-any');
+		button.setAttribute('aria-pressed', rule ? 'true' : 'false');
+	}
+
+	private renderSourceFilters(icons: HTMLElement): void {
 		icons.createSpan({ cls: 'fieldy-filter-sep' });
 		for (const source of RECORDING_SOURCES) {
 			const on = this.filters.source === source;
@@ -720,7 +833,7 @@ export class ConversationsTab {
 		this.renderContentFilters();
 		const count = activeFilterCount(this.filters);
 		// The icon filters are always on screen, so the button only counts the hidden ones.
-		const hidden = count - Object.keys(this.filters.content).length - (this.filters.source !== null ? 1 : 0);
+		const hidden = count - Object.keys(this.filters.content).length - (this.filters.source !== null ? 1 : 0) - (this.filters.privacy !== null ? 1 : 0);
 		const label = hidden > 0 ? `Filters (${hidden} active)` : 'Filters';
 		this.filterButton.toggleClass('is-active', hidden > 0 || this.filtersOpen);
 		this.filterButton.setAttribute('aria-label', label);
@@ -730,7 +843,8 @@ export class ConversationsTab {
 		this.filterBarEl.toggleClass('is-hidden', !this.filtersOpen);
 		if (!this.filtersOpen) return;
 
-		const options = filterOptions(this.items);
+		// Speakers and places of private conversations must not show up as choices.
+		const options = filterOptions(this.items.filter((c) => this.privacy(c).state === 'public'));
 		const selects = this.filterBarEl.createDiv({ cls: 'fieldy-filter-selects' });
 		const select = <T extends string>(label: string, any: string, choices: [T, string][], value: T | null, onChange: (value: T | null) => void) => {
 			const el = selects.createEl('select', { cls: 'dropdown fieldy-filter-select', attr: { 'aria-label': label } });
@@ -780,7 +894,48 @@ export class ConversationsTab {
 	}
 
 	/** Renders one card at the end of the list, or in place of `replace`. */
+	/**
+	 * A private conversation's card: when it was recorded and which filters
+	 * keep it out, nothing else (no title, content, icons or actions).
+	 */
+	private renderPrivateRow(c: FieldyConversation, privacy: Exclude<PrivacyVerdict, { state: 'public' }>, replace?: HTMLElement): HTMLElement {
+		const row = createDiv({ cls: 'fieldy-conv fieldy-conv-private', attr: { 'data-id': c.id } });
+		if (replace) replace.replaceWith(row);
+		else this.listEl.appendChild(row);
+		this.rowEls.set(c.id, row);
+		this.rowKeys.set(c.id, this.rowKey(c, this.syncedSets()));
+		const header = row.createDiv({ cls: 'fieldy-conv-header' });
+		setIcon(header.createSpan({ cls: 'fieldy-conv-chevron' }), privacy.state === 'private' ? 'lock' : 'loader');
+		const main = header.createDiv({ cls: 'fieldy-conv-main' });
+		const titleEl = main.createDiv({ cls: 'fieldy-conv-title' });
+		if (this.plugin.settings.showPrivateTitles) {
+			// Optional: the title, and the brief icon, but still no content.
+			if (c.type.toUpperCase() === 'BRIEF') {
+				const brief = titleEl.createSpan({ cls: 'fieldy-conv-private-brief' });
+				setIcon(brief, INDICATOR_ICONS.brief);
+				setTooltip(brief, 'Brief conversation');
+			}
+			titleEl.appendText(displayTitle(c));
+		} else {
+			titleEl.setText(privacy.state === 'private' ? 'Private conversation' : 'Checking privacy filters…');
+		}
+		const minutes = formatDuration(durationMinutes(c.startTime, c.endTime));
+		main.createDiv({ cls: 'fieldy-conv-meta', text: [moment(c.startTime).format('ddd D MMM YYYY · HH:mm'), minutes].filter(Boolean).join(' · ') });
+		const reason =
+			privacy.state === 'private'
+				? `No access: private filter ${describeMatches(privacy.matches)}.`
+				: this.privacyFailed
+					? 'Could not check the privacy filters (reload to try again), so its content stays hidden.'
+					: 'Hidden until its transcript has been checked against your privacy filters.';
+		main.createDiv({ cls: 'fieldy-conv-private-reason', text: reason });
+		const badge = header.createSpan({ cls: 'fieldy-badge fieldy-badge-private', text: privacy.state === 'private' ? 'Private' : 'Checking' });
+		setTooltip(badge, 'Privacy filters are set in the plugin settings (Privacy). A note from before the filter, if any, stays in your vault but is no longer updated.');
+		return row;
+	}
+
 	private renderRow(c: FieldyConversation, replace?: HTMLElement): HTMLElement {
+		const privacy = this.privacy(c);
+		if (privacy.state !== 'public') return this.renderPrivateRow(c, privacy, replace);
 		const status = this.status(c);
 		const isOpen = this.expanded.has(c.id);
 		const row = createDiv({ cls: `fieldy-conv${isOpen ? ' is-expanded' : ''}`, attr: { 'data-id': c.id } });

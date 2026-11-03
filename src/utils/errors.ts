@@ -15,6 +15,7 @@ export type FieldyErrorKind =
 	| 'vault-write'
 	| 'filename-conflict'
 	| 'locked'
+	| 'private'
 	| 'busy'
 	| 'unknown';
 
@@ -93,6 +94,8 @@ function userMessageFor(err: FieldyError): string {
 			return `Could not find a free file name for "${err.path ?? 'a note'}".`;
 		case 'locked':
 			return 'This conversation is locked by your Fieldy plan\'s history window, so its content is not available. Your note was left unchanged.';
+		case 'private':
+			return `This conversation is private (${err.message}), so it is kept out of your vault. Change the privacy filters in the settings to sync it again.`;
 		case 'busy':
 			return 'A Fieldy sync is already running. Try again when it finishes.';
 		case 'unknown':

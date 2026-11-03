@@ -120,6 +120,7 @@ An edited note is never overwritten and the original is never lost: the Fieldy v
 | You remove the markers | The whole note becomes your edited version and is left alone. Restoring appends a fresh Fieldy section. |
 | A conversation is locked by your Fieldy plan's history window | Existing notes are never replaced with the locked (redacted) version; locked conversations are not imported. |
 | A conversation is deleted in Fieldy | Its note is kept. The plugin never deletes notes. |
+| A conversation matches a [privacy filter](guide.md#privacy-filters) | No note is created. A note imported before the filter is kept as it is, no longer updated, and its banner says *Private* (or moved to the trash, with **Move notes of private conversations to the trash**). Restoring the Fieldy version of such a note is refused. |
 | One conversation fails (network, vault write…) | The rest of the sync continues; the summary lists the failure, and the next sync retries it. |
 | The destination folder exists with different capitalisation (`fieldy` vs `Fieldy`) | The existing folder is used. |
 | A note is edited | It is never reported as a problem. Manual sync summaries mention how many edited notes were kept as you wrote them. |
@@ -157,6 +158,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Sync window | Last 7 days | Conversations each sync checks (last day to last 365 days). |
 | Recording source | All sources | Only wearable, phone or desktop recordings. |
 | Include brief conversations | On | Short conversations Fieldy marks as brief. |
+| Only sync conversations recorded at | (any time) | [Time rules](#time-rules), such as *Mon–Fri 08:00–18:00*. Sync only handles conversations that started in one of them: the others get no note and their notes are not updated, as if outside the sync window. The import dialog and the panel still show everything. |
 | Sync on startup | Off | Syncs about 10 seconds after Obsidian starts. |
 | Automatic sync | Off | Every 15 minutes to once a day. |
 | Re-create deleted notes | Off | Imports again notes you deleted. |
@@ -221,6 +223,38 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Link speakers in the transcript | Off | Also links the transcript's speaker names. |
 | Create notes for new speakers | Off | Creates an empty note (with `fieldy_speaker`) in the people folder, or `People`, for each speaker without one. Never for "Unknown", "Speaker A" or other generic labels. |
 
+### Privacy
+
+One entry per line (or separated by commas). Case and accents are ignored. See [Privacy filters](guide.md#privacy-filters).
+
+| Setting | Default | Description |
+| --- | --- | --- |
+| Private keywords | (none) | Whole words or phrases in the title, summary, memory content, keywords or quotes. A trailing `*` matches words starting with it. |
+| Private speakers | (none) | Speaker names. |
+| Private places | (none) | Words of the recording's address: street, city, postal code, country. A trailing `*` works here too. |
+| Private templates | (none) | Fieldy memory template names. |
+| Private times | (none) | [Time rules](#time-rules), such as *every day 12:00–13:00*. A conversation with any moment matching them is private. |
+| Also search transcripts | Off | Also looks for private keywords and speakers in transcripts. One request per conversation, once (results are remembered until the conversation or the filters change). |
+| Show titles of private conversations | Off | Private cards (and import rows) show the title, and the brief icon for brief conversations, instead of "Private conversation". |
+| Move notes of private conversations to the trash | Off | Asks first. Sync moves notes of private conversations to the trash (Obsidian's or the system's, per **Files and links**), with any text you added. Without the filter, the conversation is imported again like a new one. |
+| Notes of private conversations | | Lists notes imported before a filter matched their conversation, to open and delete them. |
+
+### Time rules
+
+**Only sync conversations recorded at** (Sync) and **Private times** (Privacy) are small forms: one rule per row, added with **+** and removed with the row's delete button. Each row has:
+
+- **Days:** the seven day buttons, Monday first. None selected means every day.
+- **From** and **To:** a time range in your local time. Both empty means the whole day; only one means from or until midnight. A range ending earlier than it starts runs past midnight: *Fri 22:00–02:00* covers Friday night into Saturday.
+- **Logic** (from the second row): how the row combines with the rows above it, from top to bottom. **or** adds its times, **and** keeps only times matching both, **except** removes its times.
+
+Each row's name shows how it is read, for example:
+
+| Rows | Means |
+| --- | --- |
+| Mon–Fri 08:00–18:00 | Working hours. |
+| Mon–Fri 08:00–18:00, *except* every day 12:00–13:00 | Working hours without the lunch break. |
+| every day 12:00–13:00, *or* Sat–Sun all day | Lunch breaks and weekends. |
+
 ### Advanced
 
 | Setting | Default | Description |
@@ -264,7 +298,7 @@ All commands start with `Fieldy Sync:` in the command palette. No hotkeys are as
 
 Fieldy allows **100 requests per 60 seconds** per API key. All requests go through one shared limiter (60 per minute by default). On a `429` response the plugin pauses every request for Fieldy's cooldown (60 seconds, or the server's `Retry-After`) before retrying.
 
-A sync costs one request per 50 conversations listed, one to seven for tasks (one per task status: open and approved, plus completed and the four dismissed statuses when those are included), and one transcript request per new or changed conversation. A first import of several hundred conversations takes a few minutes, with progress in the status bar. Syncs never overlap; a scheduled sync is skipped while another one runs.
+A sync costs one request per 50 conversations listed, one to seven for tasks (one per task status: open and approved, plus completed and the four dismissed statuses when those are included), and one transcript request per new or changed conversation. With **Also search transcripts** on, each conversation's transcript is also read once for the privacy check (reused for the note, then remembered). A first import of several hundred conversations takes a few minutes, with progress in the status bar. Syncs never overlap; a scheduled sync is skipped while another one runs.
 
 The panel stays light on long histories: it draws 100 cards at a time, checks share links only for cards you see, and looks up recording sources once per loaded period. An export with transcripts costs one request per conversation, so the dialog shows the time left.
 

@@ -100,7 +100,25 @@ export class FieldyView extends ItemView {
 				if (this.tab === 'account') this.account.render();
 			}),
 		);
-		this.registerEvent(events.on('settings-changed', () => this.renderSyncLine()));
+		this.registerEvent(
+			events.on(
+				'settings-changed',
+				debounce(
+					() => {
+						// Each part on its own: one failing must not leave the others showing stale (possibly private) content.
+						for (const update of [() => this.renderSyncLine(), () => this.conversations.onSettingsChanged(), () => this.tasks.onSettingsChanged()]) {
+							try {
+								update();
+							} catch (err) {
+								console.error('Fieldy Sync: could not refresh the panel', err);
+							}
+						}
+					},
+					300,
+					true,
+				),
+			),
+		);
 		const refreshNotes = debounce(() => void this.conversations.refreshLocal(), 1500, true);
 		this.registerEvent(this.app.vault.on('create', refreshNotes));
 		this.registerEvent(this.app.vault.on('delete', refreshNotes));

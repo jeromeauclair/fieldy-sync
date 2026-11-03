@@ -1,17 +1,25 @@
 import { Modal, moment, Notice, Setting, type App } from 'obsidian';
 import type { FieldyConversation } from '../api/types';
 import { displayTitle } from '../markdown/ConversationRenderer';
+import { describeMatches } from '../privacy/privacy';
 import { HISTORY_START_ISO } from '../utils/dates';
 import { describeError, isCancellation } from '../utils/errors';
 import { sanitizeFolderPath } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
 
 type RangePreset = '3' | '7' | '14' | '30' | '90' | '365' | 'all' | 'custom';
-type LocalStatus = 'new' | 'imported' | 'deleted' | 'edited' | 'paused' | 'locked';
+type LocalStatus = 'new' | 'imported' | 'deleted' | 'edited' | 'paused' | 'locked' | 'private';
 
 interface Row {
 	conversation: FieldyConversation;
 	status: LocalStatus;
+	/** Which privacy filters match (status `private`). */
+	privateReason?: string;
+}
+
+/** Rows that can never be imported. */
+function blocked(row: Row): boolean {
+	return row.status === 'locked' || row.status === 'private';
 }
 
 const STATUS_LABEL: Record<LocalStatus, string> = {
@@ -21,6 +29,7 @@ const STATUS_LABEL: Record<LocalStatus, string> = {
 	edited: 'Edited by you',
 	paused: 'Paused',
 	locked: 'Locked by plan',
+	private: 'Private',
 };
 
 const PAGE = 200;
@@ -168,7 +177,7 @@ export class ImportModal extends Modal {
 			this.renderList();
 		});
 		bar.createEl('button', { text: 'Select all shown' }).addEventListener('click', () => {
-			for (const row of this.visibleRows()) if (row.status !== 'locked') this.selected.add(row.conversation.id);
+			for (const row of this.visibleRows()) if (!blocked(row)) this.selected.add(row.conversation.id);
 			this.renderList();
 		});
 		bar.createEl('button', { text: 'Select none' }).addEventListener('click', () => {
@@ -201,8 +210,14 @@ export class ImportModal extends Modal {
 			);
 			if (loader.signal.aborted) return;
 			const local = await this.plugin.localStatuses(items.map((c) => c.id));
+			// Template filters need the template names; transcript filters are checked when importing.
+			await this.plugin.privacy.prepare(loader.signal);
 			this.rows = items
-				.map((conversation): Row => ({ conversation, status: conversation.locked ? 'locked' : (local.get(conversation.id) ?? 'new') }))
+				.map((conversation): Row => {
+					const privacy = this.plugin.privacy.check(conversation);
+					if (privacy.state === 'private') return { conversation, status: 'private', privateReason: describeMatches(privacy.matches) };
+					return { conversation, status: conversation.locked ? 'locked' : (local.get(conversation.id) ?? 'new') };
+				})
 				.sort((a, b) => Date.parse(b.conversation.startTime) - Date.parse(a.conversation.startTime));
 			for (const row of this.rows) if (row.status === 'new') this.selected.add(row.conversation.id);
 			this.toolbarEl.removeClass('fieldy-hidden');
@@ -220,7 +235,7 @@ export class ImportModal extends Modal {
 		return this.rows.filter(
 			(row) =>
 				(!this.onlyNew || row.status === 'new' || row.status === 'deleted') &&
-				(this.filter === '' || displayTitle(row.conversation).toLowerCase().includes(this.filter)),
+				(this.filter === '' || (row.status !== 'private' && displayTitle(row.conversation).toLowerCase().includes(this.filter))),
 		);
 	}
 
@@ -255,19 +270,25 @@ export class ImportModal extends Modal {
 		const el = this.listEl.createEl('label', { cls: 'fieldy-import-row' });
 		const checkbox = el.createEl('input', { type: 'checkbox' });
 		checkbox.checked = this.selected.has(id);
-		checkbox.disabled = row.status === 'locked';
+		checkbox.disabled = blocked(row);
 		checkbox.addEventListener('change', () => {
 			if (checkbox.checked) this.selected.add(id);
 			else this.selected.delete(id);
 			this.renderList();
 		});
 		el.createSpan({ cls: 'fieldy-import-date', text: moment(row.conversation.startTime).format('YYYY-MM-DD HH:mm') });
-		el.createSpan({ cls: 'fieldy-import-title', text: displayTitle(row.conversation) });
+		el.createSpan({
+			cls: 'fieldy-import-title',
+			text:
+				row.status === 'private'
+					? `${this.plugin.settings.showPrivateTitles ? displayTitle(row.conversation) : 'Private conversation'} (filter: ${row.privateReason ?? ''})`
+					: displayTitle(row.conversation),
+		});
 		el.createSpan({ cls: `fieldy-badge fieldy-badge-${row.status}`, text: STATUS_LABEL[row.status] });
 	}
 
 	private startImport(): void {
-		const conversations = this.rows.filter((r) => this.selected.has(r.conversation.id) && r.status !== 'locked').map((r) => r.conversation);
+		const conversations = this.rows.filter((r) => this.selected.has(r.conversation.id) && !blocked(r)).map((r) => r.conversation);
 		if (conversations.length === 0) return;
 		if (this.plugin.engine.isRunning) {
 			new Notice('A Fieldy sync is already running. Try again when it finishes.');

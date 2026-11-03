@@ -83,6 +83,11 @@ export class ObsidianNoteStore implements NoteStore {
 		this.taken.add(normalized.toLowerCase());
 	}
 
+	async trash(path: string): Promise<void> {
+		await this.app.fileManager.trashFile(this.file(path));
+		this.taken.delete(normalizePath(path).toLowerCase());
+	}
+
 	async ensureFolder(path: string): Promise<string> {
 		const segments = normalizePath(path).split('/').filter((s) => s !== '' && s !== '/');
 		let current = '';

@@ -23,6 +23,8 @@ export interface NoteStore {
 	/** The body and the block properties (`fieldy_hash`, `fieldy_src`) read from the file itself. */
 	readNote(path: string): Promise<NoteContent>;
 	create(path: string, frontmatter: Record<string, unknown>, body: string): Promise<void>;
+	/** Moves a note to the trash the user chose in Obsidian (recoverable). */
+	trash(path: string): Promise<void>;
 	/**
 	 * Makes sure the folder exists and resolves to its actual path. On
 	 * case-insensitive file systems an existing folder that differs only in

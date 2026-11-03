@@ -37,6 +37,13 @@ export function registerNoteBanner(plugin: FieldySyncPlugin): void {
 	applyBannerColors(plugin);
 	plugin.register(() => document.body.setCssProps(Object.fromEntries(COLOR_VARS.map((v) => [v, '']))));
 	let shown = plugin.settings.showNoteBanner;
+	// A sync can make a note private (or public again): rebuild the banners' status.
+	plugin.registerEvent(
+		plugin.events.on('sync-finished', () => {
+			settingsRevision++;
+			plugin.app.workspace.updateOptions();
+		}),
+	);
 	plugin.registerEvent(
 		plugin.events.on('settings-changed', () => {
 			applyBannerColors(plugin);
@@ -84,6 +91,8 @@ interface BannerModel {
 	id: string;
 	status: BannerStatus;
 	syncedAt: string | null;
+	/** Which privacy filters match (status `private`). */
+	privateReason?: string;
 }
 
 /**
@@ -111,6 +120,8 @@ function bannerModel(plugin: FieldySyncPlugin, text: string): BannerModel | null
 	if (!status) return null;
 	const synced = frontmatter?.[SYNCED_KEY];
 	const when = typeof synced === 'string' && moment(synced).isValid() ? moment(synced).format(plugin.settings.noteDateFormat) : null;
+	const record = plugin.syncState.get(id);
+	if (record?.status === 'private') return { id, status: 'private', syncedAt: when, privateReason: record.privateReason };
 	return { id, status, syncedAt: when };
 }
 
@@ -122,7 +133,7 @@ function renderBanner(plugin: FieldySyncPlugin, model: BannerModel, position: 'b
 	setIcon(icon, position === 'begin' ? 'messages-square' : 'corner-left-up');
 	el.createSpan({ cls: 'fieldy-banner-title', text: position === 'begin' ? 'Fieldy' : 'End of the Fieldy section' });
 	const chip = el.createSpan({ cls: 'fieldy-banner-status', text: BANNER_LABELS[model.status] });
-	setTooltip(chip, BANNER_HINTS[model.status]);
+	setTooltip(chip, model.privateReason ? `${BANNER_HINTS[model.status]} Filter: ${model.privateReason}.` : BANNER_HINTS[model.status]);
 	if (position === 'end') el.createSpan({ cls: 'fieldy-banner-meta', text: 'Your own notes go below' });
 	else if (model.syncedAt) el.createSpan({ cls: 'fieldy-banner-meta', text: `Synced ${model.syncedAt}` });
 

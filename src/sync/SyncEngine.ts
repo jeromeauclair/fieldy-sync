@@ -1,5 +1,7 @@
 import type { FieldyClient } from '../api/FieldyClient';
-import type { FieldyConversation, FieldyTask, TimeRange } from '../api/types';
+import type { FieldyConversation, FieldyTask, FieldyTranscriptSegment, TimeRange } from '../api/types';
+import type { PrivacyGuard, SettledVerdict } from '../privacy/PrivacyGuard';
+import { describeMatches } from '../privacy/privacy';
 import {
 	applyManagedFrontmatter,
 	buildCreationFrontmatter,
@@ -35,6 +37,7 @@ import { taskStatusesFor, type FieldySyncSettings } from '../settings/settings';
 import { daysBefore, type DateFormatter } from '../utils/dates';
 import { FieldyError, isCancellation, toFieldyError } from '../utils/errors';
 import { silentLogger, type Logger } from '../utils/logger';
+import { inTimeRules } from '../utils/timeRules';
 import { applyFilenamePattern, joinVaultPath, sanitizeFilename, sanitizeFolderPath, subfolderFor, uniqueNotePath } from '../utils/paths';
 import { sourceFingerprint } from './fingerprint';
 import type { NoteRef, NoteStore } from './NoteStore';
@@ -94,6 +97,8 @@ interface SyncEngineDeps {
 	formatDate: DateFormatter;
 	now?: () => number;
 	logger?: Logger;
+	/** Privacy filters; without it, every conversation is public. */
+	privacy?: PrivacyGuard;
 }
 
 export class SyncAlreadyRunningError extends FieldyError {
@@ -207,6 +212,8 @@ class SyncRun {
 	private speakerNameCache: Promise<Map<string, string>> | null = null;
 	private templateCache: Promise<Map<string, string>> | null = null;
 	private people: PeopleIndex | null = null;
+	/** Transcripts already read for the privacy check, reused when rendering. */
+	private readonly transcripts = new Map<string, FieldyTranscriptSegment[]>();
 
 	constructor(
 		private readonly deps: SyncEngineDeps,
@@ -240,6 +247,8 @@ class SyncRun {
 		let fatal: string | null = null;
 		let fatalKind: string | null = null;
 		try {
+			// Template names are read again each run, so a renamed template is matched by its new name.
+			this.deps.privacy?.forgetTemplates();
 			const conversations = await this.loadConversations();
 			if (conversations.length > 0) {
 				this.tasksByConversation = await this.loadTasks();
@@ -320,7 +329,17 @@ class SyncRun {
 			items = result.items;
 		}
 		const only = this.request.onlyIds;
-		const filtered = items.filter((c) => (only ? only.has(c.id) : s.includeBrief || c.type.toUpperCase() !== 'BRIEF'));
+		// Like brief conversations, the sync times only limit regular syncs, not explicit imports and refreshes.
+		const times = s.syncTimeRules;
+		const filtered = items.filter((c) => {
+			if (only) return only.has(c.id);
+			if (!s.includeBrief && c.type.toUpperCase() === 'BRIEF') return false;
+			if (times.length > 0 && !inTimeRules(c.startTime, times)) {
+				this.counts.skippedSchedule++;
+				return false;
+			}
+			return true;
+		});
 		// Oldest first, so name suffixes for duplicate titles are stable.
 		return filtered.sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime) || a.id.localeCompare(b.id));
 	}
@@ -341,10 +360,42 @@ class SyncRun {
 
 	// ------------------------------------------------------- classification
 
+	/**
+	 * Whether the conversation is private. Only a conversation that would be
+	 * written (or already has a note) costs requests (template names, the
+	 * transcript); for the others the cheap answer is enough, and null means
+	 * "not checked": such a conversation gets no note in this run anyway.
+	 */
+	private async privacyOf(conversation: FieldyConversation, worthResolving: boolean): Promise<SettledVerdict | null> {
+		const guard = this.deps.privacy;
+		if (!guard) return { state: 'public' };
+		const known = guard.check(conversation);
+		if (known.state !== 'pending') return known;
+		if (!worthResolving) return null;
+		const { verdict, transcript } = await guard.resolve(conversation, this.signal);
+		if (transcript) this.transcripts.set(conversation.id, transcript);
+		return verdict;
+	}
+
+	/** Whether a conversation without a note would get one in this run. */
+	private wouldCreate(conversation: FieldyConversation, record: SyncRecord | undefined): boolean {
+		const recreate = this.request.recreateDeleted ?? this.settings.recreateDeleted;
+		if (record && !recreate) return false;
+		if (!record && !(this.request.createNew ?? this.settings.importNewOnSync)) return false;
+		return !conversation.locked;
+	}
+
 	private async processConversation(conversation: FieldyConversation): Promise<void> {
 		const tasks = this.tasksByConversation.get(conversation.id) ?? [];
 		const refs = this.index.get(conversation.id) ?? [];
 		const record = this.deps.state.get(conversation.id);
+		const existing = pickPrimary(refs, record);
+		const verdict = await this.privacyOf(conversation, existing !== undefined || this.wouldCreate(conversation, record));
+		if (verdict?.state === 'private') {
+			await this.keepPrivate(conversation, existing ? refs : [], record, describeMatches(verdict.matches));
+			return;
+		}
+		// Unknown (null) only when nothing would be written anyway: the usual skips below apply.
 		if (this.settings.linkSpeakers && this.settings.createSpeakerNotes && !conversation.locked) {
 			const primary = pickPrimary(refs, record);
 			const willHaveNote = primary ? !isSyncPaused(primary.frontmatter) : !record && (this.request.createNew ?? this.settings.importNewOnSync);
@@ -483,6 +534,28 @@ class SyncRun {
 		this.upsert(conversation, ref.path, record, { status: 'synced', sourceHash: source, contentHash: hashBlock(inner), editedReason: undefined });
 		this.counts.updated++;
 		this.updatedIds.push(conversation.id);
+	}
+
+	/**
+	 * A privacy filter matches: no note is created. A note from before is kept
+	 * exactly as it is but no longer updated (its banner says why), or, with
+	 * "Move notes of private conversations to the trash", moved to the trash
+	 * and forgotten, so removing the filter imports the conversation again.
+	 */
+	private async keepPrivate(conversation: FieldyConversation, refs: readonly NoteRef[], record: SyncRecord | undefined, reason: string): Promise<void> {
+		this.counts.skippedPrivate++;
+		const primary = pickPrimary(refs, record);
+		if (primary && this.settings.deletePrivateNotes) {
+			for (const ref of refs) {
+				await vaultOp(ref.path, () => this.deps.store.trash(ref.path));
+				this.counts.privateTrashed++;
+			}
+			this.index.delete(conversation.id);
+			this.deps.state.delete(conversation.id);
+			return;
+		}
+		if (primary) this.upsert(conversation, primary.path, record, { status: 'private', privateReason: reason, editedReason: undefined });
+		else if (record?.status === 'private') this.deps.state.set(conversation.id, { ...record, status: 'deleted', privateReason: undefined });
 	}
 
 	// ---------------------------------------------------------------- writes
@@ -631,8 +704,13 @@ class SyncRun {
 		localTaskStates: ReadonlyMap<string, string> | undefined,
 	): Promise<ConversationRenderInput> {
 		const s = this.settings;
-		const transcript = s.includeTranscript
-			? await this.deps.client.listTranscriptions(
+		const prefetched = this.transcripts.get(conversation.id);
+		this.transcripts.delete(conversation.id);
+		const transcript = !s.includeTranscript
+			? null
+			: prefetched
+				? prefetched
+				: await this.deps.client.listTranscriptions(
 					{
 						startTime: conversation.startTime,
 						endTime: conversation.endTime ?? this.nowIso(),
@@ -640,8 +718,7 @@ class SyncRun {
 						recordingSource: s.recordingSource === 'all' ? undefined : s.recordingSource,
 					},
 					{ signal: this.signal },
-				)
-			: null;
+				);
 		const speakerNames = transcript?.some((seg) => seg.speakerProfileId) ? await this.speakerNames() : new Map<string, string>();
 		const templateName = conversation.templateId ? ((await this.templates()).get(conversation.templateId) ?? null) : null;
 		const shareLinks = s.includeShareLinks ? await this.deps.client.listSharables(conversation.id, { signal: this.signal }) : [];
@@ -674,6 +751,15 @@ class SyncRun {
 		if (!conversation) throw new FieldyError('not-found', 'This conversation no longer exists in Fieldy.');
 		// Same rule as regular syncs: never replace real content with the plan-redacted version.
 		if (conversation.locked) throw new FieldyError('locked', 'The conversation is locked by the Fieldy plan.');
+		if (this.deps.privacy) {
+			const { verdict, transcript } = await this.deps.privacy.resolve(conversation, this.signal);
+			if (verdict.state === 'private') {
+				this.upsert(conversation, ref.path, record, { status: 'private', privateReason: describeMatches(verdict.matches), editedReason: undefined });
+				await this.saveState();
+				throw new FieldyError('private', describeMatches(verdict.matches));
+			}
+			if (transcript) this.transcripts.set(id, transcript);
+		}
 		const statuses = taskStatusesFor(this.settings);
 		const tasks =
 			statuses.length > 0

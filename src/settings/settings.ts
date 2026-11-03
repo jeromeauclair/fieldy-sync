@@ -1,6 +1,7 @@
 import { RECORDING_SOURCES, type RecordingSource, type TaskStatus } from '../api/types';
 import { MAX_REQUESTS_PER_MINUTE } from '../api/rateLimiter';
 import { sanitizeFolderPath } from '../utils/paths';
+import { sanitizeTimeRules, type TimeRule } from '../utils/timeRules';
 
 export type TranscriptFormat = 'paragraphs' | 'timestamped' | 'timestamped-speaker';
 export type TimestampStyle = 'clock' | 'elapsed';
@@ -24,6 +25,8 @@ export interface FieldySyncSettings {
 	syncWindowDays: number;
 	recordingSource: RecordingSourceFilter;
 	includeBrief: boolean;
+	/** When a conversation must have started to be synced; empty = any time. */
+	syncTimeRules: TimeRule[];
 	syncOnStartup: boolean;
 	autoSyncMinutes: number;
 	recreateDeleted: boolean;
@@ -74,6 +77,21 @@ export interface FieldySyncSettings {
 	/** Create a people note for speakers that have none (needs speaker links). */
 	createSpeakerNotes: boolean;
 
+	// Privacy: one entry per line (or comma). Matching conversations are kept out of the vault.
+	privateKeywords: string;
+	privateSpeakers: string;
+	privatePlaces: string;
+	/** Fieldy memory template names. */
+	privateTemplates: string;
+	/** A conversation with any moment matching these rules is private. */
+	privateTimeRules: TimeRule[];
+	/** Also look for private keywords and speakers in transcripts (one request per conversation, once). */
+	privacySearchTranscript: boolean;
+	/** Move the notes of conversations that became private to the trash (instead of keeping them, frozen). */
+	deletePrivateNotes: boolean;
+	/** Show the title (and the brief icon) on private conversations' cards. */
+	showPrivateTitles: boolean;
+
 	// Advanced
 	requestTimeoutSeconds: number;
 	maxRetries: number;
@@ -101,6 +119,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	syncWindowDays: 7,
 	recordingSource: 'all',
 	includeBrief: true,
+	syncTimeRules: [],
 	syncOnStartup: false,
 	autoSyncMinutes: 0,
 	recreateDeleted: false,
@@ -142,6 +161,15 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	peopleFolder: '',
 	linkTranscriptSpeakers: false,
 	createSpeakerNotes: false,
+
+	privateKeywords: '',
+	privateSpeakers: '',
+	privatePlaces: '',
+	privateTemplates: '',
+	privateTimeRules: [],
+	privacySearchTranscript: false,
+	deletePrivateNotes: false,
+	showPrivateTitles: false,
 
 	requestTimeoutSeconds: 30,
 	maxRetries: 3,
@@ -224,6 +252,7 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		syncWindowDays: int(s.syncWindowDays, d.syncWindowDays, 1, 3650),
 		recordingSource: pick(s.recordingSource, ['all', ...RECORDING_SOURCES] as const, d.recordingSource),
 		includeBrief: bool(s.includeBrief, d.includeBrief),
+		syncTimeRules: sanitizeTimeRules(s.syncTimeRules),
 		syncOnStartup: bool(s.syncOnStartup, d.syncOnStartup),
 		autoSyncMinutes: int(s.autoSyncMinutes, d.autoSyncMinutes, 0, 10_080),
 		recreateDeleted: bool(s.recreateDeleted, d.recreateDeleted),
@@ -265,6 +294,15 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		peopleFolder: sanitizeFolderPath(text(s.peopleFolder, d.peopleFolder, 300)),
 		linkTranscriptSpeakers: bool(s.linkTranscriptSpeakers, d.linkTranscriptSpeakers),
 		createSpeakerNotes: bool(s.createSpeakerNotes, d.createSpeakerNotes),
+
+		privateKeywords: text(s.privateKeywords, d.privateKeywords, 5000),
+		privateSpeakers: text(s.privateSpeakers, d.privateSpeakers, 5000),
+		privatePlaces: text(s.privatePlaces, d.privatePlaces, 5000),
+		privateTemplates: text(s.privateTemplates, d.privateTemplates, 5000),
+		privateTimeRules: sanitizeTimeRules(s.privateTimeRules),
+		privacySearchTranscript: bool(s.privacySearchTranscript, d.privacySearchTranscript),
+		deletePrivateNotes: bool(s.deletePrivateNotes, d.deletePrivateNotes),
+		showPrivateTitles: bool(s.showPrivateTitles, d.showPrivateTitles),
 
 		requestTimeoutSeconds: int(s.requestTimeoutSeconds, d.requestTimeoutSeconds, 5, 300),
 		maxRetries: int(s.maxRetries, d.maxRetries, 0, 10),

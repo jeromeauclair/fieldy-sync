@@ -1,6 +1,6 @@
 # Fieldy Sync user guide
 
-How to use the side panel, the note banners, `fieldy` blocks, Dataview, edited notes, and import and export. For installation and setup, see the [README](../README.md). For every setting and the details of sync, see the [reference](reference.md).
+How to use the side panel, the note banners, `fieldy` blocks, Dataview, edited notes, privacy filters, and import and export. For installation and setup, see the [README](../README.md). For every setting and the details of sync, see the [reference](reference.md).
 
 - [The Fieldy panel](#the-fieldy-panel)
 - [Note banners](#note-banners)
@@ -8,6 +8,7 @@ How to use the side panel, the note banners, `fieldy` blocks, Dataview, edited n
 - [Dashboards: fieldy blocks](#dashboards-fieldy-blocks)
 - [Dataview](#dataview)
 - [Edited notes](#edited-notes)
+- [Privacy filters](#privacy-filters)
 - [Import](#import)
 - [Export](#export)
 
@@ -184,9 +185,37 @@ When you edit inside a note's Fieldy section, the note becomes your edited versi
 
 If you undo your edits yourself, the note goes back to receiving updates on its own. To freeze a note without editing it, set `fieldy_sync: false` in its properties.
 
+## Privacy filters
+
+Some conversations do not belong in your vault: a doctor's appointment, a salary talk, a private call. **Settings → Privacy** lists what makes a conversation private, one entry per line:
+
+| Filter | Matches |
+| --- | --- |
+| **Private keywords** | Words or phrases in the title, summary, memory content, keywords or quotes. |
+| **Private speakers** | A speaker's name, as Fieldy shows it. |
+| **Private places** | Words of the address where it was recorded: street, city, postal code or country. |
+| **Private templates** | Fieldy memory templates by name: every conversation summarised with one is private. |
+| **Private times** | [Time rules](reference.md#time-rules): days and hours, one rule per row, combined with *or*, *and*, *except* (a lunch break, the weekend…). A conversation with any moment matching them is private. |
+
+Case and accents are ignored. Keywords and places match whole words; end one with `*` to match every word starting with it (`therap*` catches *therapy* and *therapist*).
+
+A private conversation:
+
+- gets **no note**, and its **tasks are hidden** in the Tasks tab (which says how many) and in notes;
+- is **left out of exports**, and shown as *Private* (not selectable) in the import dialog;
+- appears in the panel as a short card: **"Private conversation"**, its date and length, and the filter that matched ("No access: private filter keyword "doctor""). No title (unless **Show titles of private conversations** is on: then the title, and the brief icon for brief ones), content, icons or actions. Private cards never match a search or another filter. The <img src="icons/lock.svg" width="16" height="16" alt="Private conversations"> icon at the end of the filter row (shown while privacy filters are set) cycles like the others: only private conversations, none of them, or any.
+
+A note imported **before** you added the filter is kept exactly as it is but no longer updated; its banner says *Private*. **Settings → Privacy → Notes of private conversations** lists those notes so you can delete the ones you do not want. Removing the filter brings them back to normal at the next sync.
+
+To have them removed instead, turn on **Move notes of private conversations to the trash** (off by default; it asks first). Sync then moves those notes to the trash, Obsidian's or your system's as set in **Files and links**, with any text you added to them. If you remove the filter later, the conversation is imported again like a new one.
+
+**Also search transcripts** (off by default) looks for private keywords and speakers in what was said too, not only in what Fieldy summarised. Each transcript has to be downloaded once to be checked, one request per conversation, even when transcripts are not written into notes. A sync over a long period, an import of your history or browsing older conversations in the panel can then take many minutes, within Fieldy's limit of 100 requests per minute. Results are remembered (only whether each conversation matched, not its text), so a transcript is checked again only when its conversation or the filters change. Until a conversation is checked, the panel shows it as *Checking privacy filters…* without any content.
+
+Privacy filters work in Obsidian only: the conversations stay in your Fieldy account, and the filters are never sent anywhere or included in diagnostics.
+
 ## Import
 
-**Fieldy Sync: Import conversations** (or the <img src="icons/download.svg" width="16" height="16" alt="Import"> button in the panel) brings in conversations outside the sync window: pick a period up to your entire history or a custom range, see each conversation's status (new, in vault, edited, paused, deleted, locked), filter by title, select, and choose the destination folder. The import runs in the background with progress in the status bar, and follows the same rules as sync: no duplicates, and edited notes are left alone.
+**Fieldy Sync: Import conversations** (or the <img src="icons/download.svg" width="16" height="16" alt="Import"> button in the panel) brings in conversations outside the sync window: pick a period up to your entire history or a custom range, see each conversation's status (new, in vault, edited, paused, deleted, locked, private), filter by title, select, and choose the destination folder. The import runs in the background with progress in the status bar, and follows the same rules as sync: no duplicates, and edited notes are left alone.
 
 ## Export
 
@@ -196,5 +225,5 @@ If you undo your edits yourself, the note goes back to receiving updates on its 
 
 - **What:** the entire history, a preset period (3 days to 12 months) or a date range, with or without brief conversations.
 - **Formats:** one Markdown note; JSON with all the data; CSV with one row per conversation, readable by any spreadsheet; or plain text.
-- **Included:** each conversation's details, summary, full memory content, quotes and tasks; transcripts on request.
+- **Included:** each conversation's details, summary, full memory content, quotes and tasks; transcripts on request. [Private conversations](#privacy-filters) are always left out.
 - **Time:** transcripts cost one request each, so the dialog shows the time left, and **Cancel export** stops without saving.

@@ -99,6 +99,14 @@ export class MemoryNoteStore implements NoteStore {
 	}
 
 	/** Behaves like a case-insensitive file system: an existing folder differing in case is reused. */
+	readonly trashed: string[] = [];
+
+	async trash(path: string): Promise<void> {
+		this.note(path);
+		this.notes.delete(path);
+		this.trashed.push(path);
+	}
+
 	async ensureFolder(path: string): Promise<string> {
 		let current = '';
 		for (const segment of path.split('/')) {

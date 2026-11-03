@@ -8,6 +8,7 @@ import type { FieldyConversation } from './api/types';
 import { connectionLabel, nextConnectionState, type ConnectionState } from './connection';
 import { buildDiagnostics } from './diagnostics';
 import { ID_KEY } from './markdown/ConversationRenderer';
+import { PrivacyGuard, sanitizeTranscriptChecks, TranscriptCheckCache, type TranscriptCheck } from './privacy/PrivacyGuard';
 import { ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
 import { FieldySettingsTab } from './settings/SettingsTab';
 import { ObsidianNoteStore } from './sync/ObsidianNoteStore';
@@ -31,6 +32,8 @@ import { redactSecrets } from './utils/redact';
 interface PluginData {
 	settings: FieldySyncSettings;
 	state: SyncStateData;
+	/** Transcripts already checked against the privacy filters (only their verdicts). */
+	privacyChecks?: Record<string, TranscriptCheck>;
 }
 
 export type LocalStatus = 'imported' | 'deleted' | 'edited' | 'paused';
@@ -53,10 +56,12 @@ export default class FieldySyncPlugin extends Plugin {
 	syncState!: SyncState;
 	client!: FieldyClient;
 	engine!: SyncEngine;
+	privacy!: PrivacyGuard;
 	readonly events = new Events();
 	connection: ConnectionState = { status: 'unknown' };
 
 	private limiter!: RateLimiter;
+	private privacyChecks!: TranscriptCheckCache;
 	private store!: ObsidianNoteStore;
 	private logger!: Logger;
 	private statusBar: StatusBar | null = null;
@@ -82,6 +87,7 @@ export default class FieldySyncPlugin extends Plugin {
 			logger: this.logger,
 		});
 		this.store = new ObsidianNoteStore(this.app);
+		this.privacy = new PrivacyGuard({ settings: () => this.settings, client: this.client, cache: this.privacyChecks });
 		this.engine = new SyncEngine({
 			client: this.client,
 			store: this.store,
@@ -89,6 +95,7 @@ export default class FieldySyncPlugin extends Plugin {
 			settings: () => this.settings,
 			formatDate: (iso, format) => moment(iso).format(format),
 			logger: this.logger,
+			privacy: this.privacy,
 		});
 		if (!this.hasApiKey()) this.connection = { status: 'not-configured' };
 
@@ -158,6 +165,9 @@ export default class FieldySyncPlugin extends Plugin {
 		const state = sanitizeSyncState(raw.state);
 		if (this.syncState) this.syncState.replace(state);
 		else this.syncState = new SyncState(state, () => this.persist());
+		const checks = sanitizeTranscriptChecks(raw.privacyChecks);
+		if (this.privacyChecks) this.privacyChecks.replace(checks);
+		else this.privacyChecks = new TranscriptCheckCache(checks, () => this.persistSoon());
 	}
 
 	/**
@@ -169,7 +179,7 @@ export default class FieldySyncPlugin extends Plugin {
 		this.cancelPersistSoon();
 		this.saveQueued ??= this.saving.then(async () => {
 			this.saveQueued = null;
-			await this.saveData({ settings: this.settings, state: this.syncState.toJSON() } satisfies PluginData);
+			await this.saveData({ settings: this.settings, state: this.syncState.toJSON(), privacyChecks: this.privacyChecks.toJSON() } satisfies PluginData);
 		});
 		this.saving = this.saveQueued.catch(() => undefined);
 		return this.saveQueued;
@@ -195,6 +205,8 @@ export default class FieldySyncPlugin extends Plugin {
 		// A running sync works on its own settings snapshot, so settings apply right away.
 		this.settings = sanitizeSettings(raw.settings);
 		const external = sanitizeSyncState(raw.state);
+		// Both devices' transcript checks are valid; keep them all.
+		this.privacyChecks.replace({ ...sanitizeTranscriptChecks(raw.privacyChecks), ...this.privacyChecks.toJSON() });
 		if (this.engine?.isRunning) {
 			// The run owns the index until it finishes; merge then instead of losing either side.
 			this.pendingExternalState = external;

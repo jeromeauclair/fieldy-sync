@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Privacy filters
+
+- New **Privacy** settings page: private keywords, speakers, places and Fieldy memory templates (one per line; case and accents ignored; whole words, `*` for word starts), and private times as a form of rules (days, from, to, combined with *or*, *and*, *except*). A conversation with any moment in a private time is private.
+- Private conversations get no note, their tasks are hidden, and they are left out of exports and shown as *Private* in the import dialog. In the panel they appear as a brief card with their date and the matching filter, and never match a search or another filter; a lock icon in the filter row shows only them, hides them, or either. Their speakers and places are not offered as filter choices.
+- Notes imported before a filter matched are kept as they are, no longer updated, with a *Private* banner; Settings lists them for review. Optional (off by default, asks first): move them to the trash instead.
+- Optional: show the titles of private conversations (and the brief icon) on their cards.
+- Optional **Also search transcripts** (off by default, with a warning about the extra requests): checks each transcript once and remembers the result.
+- Diagnostics never include privacy filter entries.
+
+### Sync times
+
+- **Only sync conversations recorded at** (Sync settings): the same form of time rules, such as *Mon–Fri 08:00–18:00, except 12:00–13:00*. Conversations that started at other times are left alone by sync; imports are not limited.
+
+### Fixes
+
+- Side panel: a card that changed while on screen could stop the list from redrawing.
+- Side panel: changing the period while the first conversations were still loading left the list loading forever.
+
 ## 1.0.0
 
 First release, licensed under the Functional Source License (FSL-1.1-MIT). Requires Obsidian 1.14.0 or newer. Tested on desktop; it installs on mobile with a one-time "not tested yet" notice (full mobile support is planned for 1.2). Documentation: [README](https://github.com/jeromeauclair/fieldy-sync/blob/main/README.md), [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) and [reference](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md).

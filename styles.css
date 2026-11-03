@@ -609,7 +609,8 @@
 }
 
 .fieldy-badge-locked,
-.fieldy-badge-paused {
+.fieldy-badge-paused,
+.fieldy-badge-private {
 	background-color: var(--background-modifier-hover);
 	color: var(--text-faint);
 }
@@ -901,7 +902,8 @@
 	--fieldy-banner-accent: var(--fieldy-banner-edited, var(--color-orange));
 }
 
-.fieldy-banner.is-paused {
+.fieldy-banner.is-paused,
+.fieldy-banner.is-private {
 	--fieldy-banner-accent: var(--fieldy-banner-paused, var(--text-faint));
 }
 
@@ -914,7 +916,8 @@
 	--fieldy-banner-accent: var(--fieldy-banner-edited-dark, var(--color-orange));
 }
 
-.theme-dark .fieldy-banner.is-paused {
+.theme-dark .fieldy-banner.is-paused,
+.theme-dark .fieldy-banner.is-private {
 	--fieldy-banner-accent: var(--fieldy-banner-paused-dark, var(--text-faint));
 }
 
@@ -1069,4 +1072,76 @@
 .fieldy-filter-count {
 	font-size: var(--font-ui-smaller);
 	font-variant-numeric: tabular-nums;
+}
+
+/* Private conversations (privacy filters): date and the matching filter, nothing else. */
+.fieldy-conv-private .fieldy-conv-header {
+	cursor: default;
+}
+
+.fieldy-conv-private .fieldy-conv-title {
+	color: var(--text-muted);
+	font-style: italic;
+}
+
+.fieldy-conv-private-reason {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	white-space: normal;
+}
+
+.fieldy-task-privacy {
+	margin-top: var(--size-2-2);
+}
+
+.fieldy-private-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.fieldy-private-reason {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-private-icon {
+	display: inline-flex;
+	--icon-size: var(--icon-xs);
+}
+
+.fieldy-conv-private-brief {
+	display: inline-flex;
+	vertical-align: -2px;
+	margin-right: var(--size-2-2);
+	color: var(--text-faint);
+	--icon-size: var(--icon-xs);
+}
+
+/* Time filter rules: one row per rule (operator, days, from, to). */
+.fieldy-time-rule .setting-item-control {
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+}
+
+.fieldy-time-days {
+	display: inline-flex;
+	gap: 2px;
+}
+
+.fieldy-time-day {
+	min-width: 1.9em;
+	padding: 0 var(--size-2-2);
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-time-day.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.fieldy-time-input {
+	width: 7em;
 }

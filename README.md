@@ -21,6 +21,7 @@ An Obsidian plugin by an independent developer, not affiliated with Fieldy. Its 
 - **Dashboards in any note.** A `fieldy` code block lists conversations, tasks or stats from your Fieldy notes, without any other plugin. Fieldy notes also work with [Dataview](https://github.com/blacksmithgu/obsidian-dataview), with ready-made queries one command away.
 - **Import and export.** Bring in your entire history, or export it to Markdown, JSON, CSV or plain text.
 - **Speakers linked to your people notes** (optional), so a person's note lists every conversation they were in.
+- **Privacy filters.** Keep conversations out of your vault by keyword, speaker, place or Fieldy template; the panel shows them only as a brief "Private conversation" card.
 - **Built for large accounts,** within Fieldy's rate limit, with manual, on-startup and periodic sync.
 - **Secure API key handling** with Obsidian's secret storage. The key is never written to the plugin's settings file, logs or notes.
 
@@ -72,7 +73,7 @@ Then open the panel with the <img src="https://raw.githubusercontent.com/jeromea
 - **API key storage:** the key is kept in Obsidian's built-in secret storage (`app.secretStorage`) and selected with Obsidian's secret picker. The plugin's `data.json` stores only the *name* of the secret, never the key, so the key is not exposed if you sync, back up or share your plugin settings. How the secret store itself is protected on disk is determined by Obsidian. As with any Obsidian secret, other community plugins you install run with the same privileges, so only install plugins you trust.
 - **No leaks:** the key is read from secret storage only at the moment of a request. It is never cached in settings or included in notes, notices, error messages, logs or diagnostics, and every message passes through secret redaction as a safeguard.
 - **Untrusted content:** text from Fieldy is sanitised before it is written. HTML, Obsidian comments, wikilink and image embeds (which could pull in vault files or load remote images), `obsidian://` URIs and script links are neutralised, and file names can never point outside the vault.
-- **Diagnostics** contain versions, settings (without the secret's name), counts and error categories only, never error messages, note paths or conversation titles.
+- **Diagnostics** contain versions, settings (without the secret's name or your privacy filter entries), counts and error categories only, never error messages, note paths or conversation titles.
 - **Vault-only:** all file access goes through Obsidian's Vault and FileManager APIs, inside your vault. `fieldy` blocks read your notes only.
 - **Links you open:** "Open in Google Maps" and "Open in OpenStreetMap" (on a conversation's location icon) and "Open the share link" open your browser at that address, only when you click them. The plugin itself sends nothing to those sites.
 

@@ -26,14 +26,16 @@ export interface PanelFilters {
 	location: string | null;
 	status: RowStatus | null;
 	source: RecordingSource | null;
+	/** Private conversations (privacy filters): only them, or none of them. */
+	privacy: ContentRule | null;
 }
 
 export function emptyFilters(): PanelFilters {
-	return { content: {}, day: null, timeOfDay: null, speaker: null, location: null, status: null, source: null };
+	return { content: {}, day: null, timeOfDay: null, speaker: null, location: null, status: null, source: null, privacy: null };
 }
 
 export function activeFilterCount(filters: PanelFilters): number {
-	const fields = [filters.day, filters.timeOfDay, filters.speaker, filters.location, filters.status, filters.source];
+	const fields = [filters.day, filters.timeOfDay, filters.speaker, filters.location, filters.status, filters.source, filters.privacy];
 	return Object.keys(filters.content).length + fields.filter((v) => v !== null).length;
 }
 

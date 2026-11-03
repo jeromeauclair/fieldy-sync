@@ -18,12 +18,15 @@ export function formatSyncSummary(summary: SyncRunSummary): string {
 	const head = summary.cancelled ? 'Fieldy sync cancelled' : 'Fieldy sync complete';
 	let text = parts.length > 0 ? `${head}: ${parts.join(', ')}.` : `${head}: no conversations ${c.scanned === 0 ? 'found in the sync window' : 'needed changes'}.`;
 
+	if (c.privateTrashed > 0) text += ` ${plural(c.privateTrashed, 'note')} of private conversations moved to the trash.`;
 	if (c.edited > 0) text += ` ${plural(c.edited, 'edited note')} kept as you wrote ${c.edited === 1 ? 'it' : 'them'}.`;
 	const skipped: string[] = [];
 	if (c.skippedLocked > 0) skipped.push(`${c.skippedLocked} locked by your Fieldy plan`);
 	if (c.skippedDeleted > 0) skipped.push(`${c.skippedDeleted} deleted from the vault`);
 	if (c.skippedPaused > 0) skipped.push(`${c.skippedPaused} paused`);
 	if (c.skippedNew > 0) skipped.push(`${c.skippedNew} new not imported`);
+	if (c.skippedPrivate > 0) skipped.push(`${c.skippedPrivate} private`);
+	if (c.skippedSchedule > 0) skipped.push(`${c.skippedSchedule} outside your sync times`);
 	if (skipped.length > 0) text += ` Skipped: ${skipped.join(', ')}.`;
 	if (c.duplicates > 0) text += ` ${plural(c.duplicates, 'conversation')} has more than one note.`;
 	if (c.failed > 0) {

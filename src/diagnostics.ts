@@ -16,8 +16,9 @@ interface DiagnosticsInput {
 
 /**
  * Plain-text diagnostics for bug reports. Contains no API key, no secret
- * name, no note content and no conversation titles; only configuration and
- * counts. Everything passes through secret redaction as a final guard.
+ * name, no note content, no conversation titles and no privacy filter
+ * entries; only configuration and counts. Everything passes through secret
+ * redaction as a final guard.
  */
 export function buildDiagnostics(input: DiagnosticsInput): string {
 	const { settings, state } = input;
@@ -26,6 +27,12 @@ export function buildDiagnostics(input: DiagnosticsInput): string {
 	const last = state.lastRun;
 	const safeSettings: Record<string, unknown> = { ...settings };
 	delete safeSettings.apiKeySecretId;
+	// Privacy filters name what the user wants kept private: only say how many there are.
+	for (const key of ['privateKeywords', 'privateSpeakers', 'privatePlaces', 'privateTemplates'] as const) {
+		const count = settings[key].split(/[\n,]/).filter((entry) => entry.trim() !== '').length;
+		safeSettings[key] = count === 0 ? '' : `(${count} hidden)`;
+	}
+	safeSettings.privateTimeRules = `(${settings.privateTimeRules.length} hidden)`;
 	// Error messages can contain note paths (built from conversation titles), so only kinds are reported.
 	const errorKinds: Record<string, number> = {};
 	for (const error of last?.errors ?? []) errorKinds[error.kind] = (errorKinds[error.kind] ?? 0) + 1;

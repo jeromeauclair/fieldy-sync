@@ -13,8 +13,10 @@
  *   and receives no updates (the original remains in Fieldy).
  * - `deleted`: imported before, then removed from the vault.
  * - `paused`: the user set `fieldy_sync: false`.
+ * - `private`: a privacy filter matches the conversation; its note (from
+ *   before the filter) is kept as it is and receives no updates.
  */
-type RecordStatus = 'synced' | 'edited' | 'deleted' | 'paused';
+type RecordStatus = 'synced' | 'edited' | 'deleted' | 'paused' | 'private';
 
 export interface SyncRecord {
 	path: string;
@@ -27,6 +29,8 @@ export interface SyncRecord {
 	status: RecordStatus;
 	/** Why the note counts as edited (markers removed, section edited...). */
 	editedReason?: string;
+	/** Which privacy filters match (status `private`), e.g. `keyword "doctor"`. */
+	privateReason?: string;
 	/** File modification time when the plugin last read or wrote the note. */
 	localMtime?: number;
 }
@@ -44,6 +48,12 @@ export interface SyncCounts {
 	skippedDeleted: number;
 	skippedPaused: number;
 	skippedNew: number;
+	/** Conversations kept out by a privacy filter. */
+	skippedPrivate: number;
+	/** Notes of private conversations moved to the trash (setting "Move notes of private conversations to the trash"). */
+	privateTrashed: number;
+	/** Conversations that started outside the "sync only at" times. */
+	skippedSchedule: number;
 	failed: number;
 	tasksPushed: number;
 	duplicates: number;
@@ -100,6 +110,9 @@ export function emptyCounts(): SyncCounts {
 		skippedDeleted: 0,
 		skippedPaused: 0,
 		skippedNew: 0,
+		skippedPrivate: 0,
+		skippedSchedule: 0,
+		privateTrashed: 0,
 		failed: 0,
 		tasksPushed: 0,
 		duplicates: 0,
@@ -108,7 +121,7 @@ export function emptyCounts(): SyncCounts {
 	};
 }
 
-const STATUSES: readonly RecordStatus[] = ['synced', 'edited', 'deleted', 'paused'];
+const STATUSES: readonly RecordStatus[] = ['synced', 'edited', 'deleted', 'paused', 'private'];
 
 function statusOf(value: unknown): RecordStatus | null {
 	return typeof value === 'string' && (STATUSES as readonly string[]).includes(value) ? (value as RecordStatus) : null;
@@ -135,6 +148,7 @@ export function sanitizeSyncState(raw: unknown): SyncStateData {
 		for (const [id, record] of Object.entries(r.records as Record<string, unknown>)) {
 			if (isRecord(record)) {
 				const reason = (record as { editedReason?: unknown }).editedReason;
+				const privateReason = (record as { privateReason?: unknown }).privateReason;
 				state.records[id] = {
 					path: record.path,
 					title: typeof record.title === 'string' ? record.title : '',
@@ -145,6 +159,7 @@ export function sanitizeSyncState(raw: unknown): SyncStateData {
 					syncedAt: record.syncedAt,
 					status: statusOf(record.status) ?? 'synced',
 					...(typeof reason === 'string' ? { editedReason: reason } : {}),
+					...(typeof privateReason === 'string' ? { privateReason } : {}),
 					...(typeof record.localMtime === 'number' && Number.isFinite(record.localMtime) ? { localMtime: record.localMtime } : {}),
 				};
 			}
@@ -236,6 +251,11 @@ export class SyncState {
 
 	entries(): [string, SyncRecord][] {
 		return Object.entries(this.data.records);
+	}
+
+	/** Notes kept from before a privacy filter matched their conversation. */
+	privateNotes(): [string, SyncRecord][] {
+		return this.entries().filter(([, r]) => r.status === 'private');
 	}
 
 	/** Notes the user edited, which sync leaves as written. */

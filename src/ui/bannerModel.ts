@@ -9,7 +9,7 @@ export interface BlockLayout {
 	last: number | null;
 }
 
-export type BannerStatus = 'synced' | 'edited' | 'paused';
+export type BannerStatus = 'synced' | 'edited' | 'paused' | 'private';
 
 /** Locates the markers; null unless there is exactly one of each, in order (anything else is the user's text). */
 export function blockLayout(lines: readonly string[]): BlockLayout | null {
@@ -52,10 +52,12 @@ export const BANNER_LABELS: Record<BannerStatus, string> = {
 	synced: 'Synced',
 	edited: 'Edited',
 	paused: 'Paused',
+	private: 'Private',
 };
 
 export const BANNER_HINTS: Record<BannerStatus, string> = {
 	synced: 'Kept up to date from Fieldy. Editing inside this section pauses its updates; write your own notes below it.',
 	edited: 'You changed this section, so sync leaves it as you wrote it. Restore brings back the Fieldy version.',
 	paused: 'This note has fieldy_sync: false, so it is never updated.',
+	private: 'A privacy filter matches this conversation, so sync no longer updates this note. It was kept as it was; delete it if you do not want it in your vault.',
 };
