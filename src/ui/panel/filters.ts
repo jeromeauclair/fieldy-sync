@@ -28,14 +28,16 @@ export interface PanelFilters {
 	source: RecordingSource | null;
 	/** Private conversations (privacy filters): only them, or none of them. */
 	privacy: ContentRule | null;
+	/** Conversations made not private for a while (2-hour exceptions): only them, or none of them. */
+	unlocked: ContentRule | null;
 }
 
 export function emptyFilters(): PanelFilters {
-	return { content: {}, day: null, timeOfDay: null, speaker: null, location: null, status: null, source: null, privacy: null };
+	return { content: {}, day: null, timeOfDay: null, speaker: null, location: null, status: null, source: null, privacy: null, unlocked: null };
 }
 
 export function activeFilterCount(filters: PanelFilters): number {
-	const fields = [filters.day, filters.timeOfDay, filters.speaker, filters.location, filters.status, filters.source, filters.privacy];
+	const fields = [filters.day, filters.timeOfDay, filters.speaker, filters.location, filters.status, filters.source, filters.privacy, filters.unlocked];
 	return Object.keys(filters.content).length + fields.filter((v) => v !== null).length;
 }
 

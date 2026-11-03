@@ -115,6 +115,17 @@ describe('SyncEngine: privacy filters', () => {
 		expect(store.paths()).toEqual(['Fieldy/2026-10-01 - Kickoff with Acme.md']);
 	});
 
+	it('syncs a conversation made not private by hand, and freezes it again without the exception', async () => {
+		const { api, store, state, engine, update } = setup({ privateKeywords: 'doctor', privacyExceptions: [{ id: 'c2', title: 'Visit to the doctor', startTime: '' }] });
+		seed(api);
+		const summary = await engine.run({ trigger: 'manual' });
+		expect(summary.counts).toMatchObject({ created: 2, skippedPrivate: 0 });
+		expect(store.paths()).toContain('Fieldy/2026-10-02 - Visit to the doctor.md');
+		update({ privacyExceptions: [] });
+		await engine.run({ trigger: 'manual' });
+		expect(state.get('c2')?.status).toBe('private');
+	});
+
 	it('refuses to restore the Fieldy version of a private conversation', async () => {
 		const { api, engine, update, state } = setup();
 		seed(api);

@@ -1,4 +1,4 @@
-import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, moment, Notice, setIcon, setTooltip, ToggleComponent } from 'obsidian';
+import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, moment, setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import type { RestoreChoice } from '../../sync/SyncEngine';
 import { RECORDING_SOURCES, type FieldyConversation, type FieldySharable, type Page, type RecordingSource, type TaskStatus } from '../../api/types';
 import {
@@ -14,7 +14,7 @@ import {
 import { sleep } from '../../utils/async';
 import { durationMinutes, formatDuration, HISTORY_START_ISO } from '../../utils/dates';
 import { describeError, isCancellation } from '../../utils/errors';
-import { FIELDY_REFERRAL_URL, shareLinkFields } from '../../settings/settings';
+import { FIELDY_REFERRAL_URL, shareLinkFields, TEMPORARY_EXCEPTION_MS } from '../../settings/settings';
 import type { PrivacyVerdict } from '../../privacy/PrivacyGuard';
 import { describeMatches } from '../../privacy/privacy';
 import type { LocalStatus } from '../../main';
@@ -114,6 +114,8 @@ const PRIVACY_CHECK_SPACING_MS = 1_500;
 /** Cards drawn at a time; more are added as the list is scrolled to its end. */
 const RENDER_BATCH = 100;
 const SEARCH_DELAY_MS = 150;
+/** Pause after the last filter change before the list follows, so several choices can be made in a row. */
+const FILTER_DELAY_MS = 720;
 
 /**
  * Makes a card element act as a button: click (or Enter/Space) runs `onClick`,
@@ -166,7 +168,17 @@ export function iconButton(parent: HTMLElement, icon: string, label: string, onC
 export class ConversationsTab {
 	private range: RangeKey = '7';
 	private search = '';
+	/** The filters being chosen, as the icons and the filter bar show them. */
 	private filters: PanelFilters = emptyFilters();
+	/** The filters the list is drawn with: the chosen ones after a short pause, or on "Apply". */
+	private applied: PanelFilters = emptyFilters();
+	private readonly debouncedApply = debounce(() => this.applyFilters(), FILTER_DELAY_MS, true);
+	/**
+	 * While filtering, cards stay listed as they were when a setting started
+	 * to change (a conversation made private or not private, for example),
+	 * until the filters apply again: after the pause, or on "Apply".
+	 */
+	private held: ReadonlySet<string> | null = null;
 	private filtersOpen = false;
 	private items: FieldyConversation[] = [];
 	private readonly byId = new Map<string, FieldyConversation>();
@@ -212,6 +224,9 @@ export class ConversationsTab {
 	private contentFiltersEl!: HTMLElement;
 	private filterBarEl!: HTMLElement;
 	private filterButton!: HTMLButtonElement;
+	private clearButton!: HTMLButtonElement;
+	private manualButton!: HTMLButtonElement;
+	private searchEl!: HTMLInputElement;
 	private footerEl!: HTMLElement;
 	private infoEl!: HTMLElement;
 
@@ -235,6 +250,7 @@ export class ConversationsTab {
 			void this.reload();
 		});
 		const search = toolbar.createEl('input', { type: 'search', cls: 'fieldy-panel-search', placeholder: 'Search title, summary, people…' });
+		this.searchEl = search;
 		search.value = this.search;
 		search.addEventListener('input', () => {
 			this.search = search.value.trim().toLowerCase();
@@ -244,6 +260,17 @@ export class ConversationsTab {
 		this.filterButton = iconButton(toolbar, 'filter', 'Filters', () => {
 			this.filtersOpen = !this.filtersOpen;
 			this.renderFilterBar();
+		});
+		this.clearButton = iconButton(toolbar, 'filter-x', 'Clear all filters and the search', () => this.clearFilters());
+		this.manualButton = iconButton(toolbar, 'hand', '', () => {
+			const held = this.held;
+			void this.plugin.updateSetting('panelApplyFiltersManually', !this.plugin.settings.panelApplyFiltersManually).then(() => {
+				// This switch changes no conversation: it never holds the list by itself.
+				this.held = held;
+				// Turning it off applies what is waiting.
+				if (!this.plugin.settings.panelApplyFiltersManually) this.applyFilters();
+				else this.renderFilterBar();
+			});
 		});
 		iconButton(toolbar, 'refresh-ccw', 'Reload from Fieldy', () => void this.reload());
 
@@ -259,13 +286,21 @@ export class ConversationsTab {
 	}
 
 	/** Settings changed: privacy filters may now match other cards. */
+	/** A setting is about to change: keep the listed cards until the filters apply again. */
+	holdListing(): void {
+		if (this.held === null && this.loaded && this.isFiltering()) this.held = new Set(this.rowEls.keys());
+	}
+
 	onSettingsChanged(): void {
 		// Without privacy filters the lock icon is gone, so its rule must not keep hiding cards; the same for share links.
-		if (!this.plugin.privacy.active()) this.filters.privacy = null;
-		if (!this.plugin.settings.useShareLinks) delete this.filters.content.link;
+		for (const filters of [this.filters, this.applied]) {
+			if (!this.plugin.privacy.active()) filters.privacy = null;
+			if (!this.plugin.settings.useShareLinks) delete filters.content.link;
+		}
 		if (!this.loaded) return;
 		this.queuePrivacyChecks(this.items);
 		this.renderList();
+		if (this.held !== null && !this.plugin.settings.panelApplyFiltersManually) this.debouncedApply();
 	}
 
 	/** Called when the tab becomes visible. */
@@ -281,6 +316,7 @@ export class ConversationsTab {
 
 	async reload(): Promise<void> {
 		this.generation++;
+		this.held = null;
 		this.items = [];
 		this.byId.clear();
 		this.exhausted = false;
@@ -320,7 +356,7 @@ export class ConversationsTab {
 			}
 			this.taskCounts = counts;
 			// An active tasks filter changes which cards match, not just their icons.
-			if (this.filters.content.tasks) this.renderList();
+			if (this.applied.content.tasks) this.renderList();
 			else for (const id of this.indicatorEls.keys()) this.updateIndicators(id);
 		} catch {
 			// Leave the task icons as "unknown"; the Tasks tab reports errors.
@@ -356,7 +392,7 @@ export class ConversationsTab {
 				try {
 					const links = await this.view.data.sharables(id);
 					this.linkStates.set(id, links.some((l) => l.enabled));
-					if (this.filters.content.link) this.renderList();
+					if (this.applied.content.link) this.renderList();
 					else this.updateIndicators(id);
 				} catch (err) {
 					// Stop on any failure (offline, invalid key...) instead of retrying every card.
@@ -454,7 +490,7 @@ export class ConversationsTab {
 			}
 			if (generation !== this.generation) return;
 			this.sourcesCheckedFrom = oldest;
-			if (this.filters.source) this.renderList();
+			if (this.applied.source) this.renderList();
 			else for (const id of this.sourceEls.keys()) this.updateSource(id);
 		} catch (err) {
 			// Leave the icons as "checking"; a reload tries again.
@@ -503,7 +539,7 @@ export class ConversationsTab {
 				icon,
 				() => {
 					const now = current();
-					if (now.state === 'off') new Notice(now.label);
+					if (now.state === 'off') this.view.flash(now.label);
 					else void this.deliverIndicator(c, now.key, 'copy');
 				},
 				(evt) => this.indicatorMenu(evt, c, current()),
@@ -546,7 +582,7 @@ export class ConversationsTab {
 				this.view.data.remember(fresh);
 				this.queuePrivacyChecks(fresh);
 				// The share-link filter needs every loaded card checked; otherwise only cards that come into view are.
-				if (this.filters.content.link) this.queueLinkChecks(fresh.filter((c) => !c.locked).map((c) => c.id));
+				if (this.applied.content.link) this.queueLinkChecks(fresh.filter((c) => !c.locked).map((c) => c.id));
 				void this.checkSources();
 				if (!next.value.items.length) this.exhausted = true;
 			}
@@ -581,12 +617,12 @@ export class ConversationsTab {
 				conversation = (await this.plugin.client.getConversation(conversationId, { signal: this.view.data.signal })) ?? undefined;
 				this.plugin.reportRequestOutcome();
 			} catch (err) {
-				if (!isCancellation(err)) new Notice(describeError(err));
+				if (!isCancellation(err)) this.view.flash(describeError(err), 'error');
 				return;
 			}
 		}
 		if (!conversation) {
-			new Notice('This conversation no longer exists in Fieldy.');
+			this.view.flash('This conversation no longer exists in Fieldy.');
 			return;
 		}
 		if (!this.byId.has(conversationId)) {
@@ -598,6 +634,8 @@ export class ConversationsTab {
 		}
 		this.search = '';
 		this.filters = emptyFilters();
+		this.applied = emptyFilters();
+		this.held = null;
 		this.expanded.add(conversationId);
 		// Far down the list: draw enough cards to reach it.
 		this.shown = Math.max(RENDER_BATCH, this.items.findIndex((c) => c.id === conversationId) + 1);
@@ -622,9 +660,12 @@ export class ConversationsTab {
 	private matches(c: FieldyConversation): boolean {
 		// Private (and not yet checked) conversations never match a search or another filter: that would reveal their content.
 		const hidden = this.privacy(c).state !== 'public';
-		if (this.filters.privacy === 'has') return hidden;
-		if (hidden) return this.filters.privacy === null && !this.isFiltering();
-		if (!matchesFilters(c, this.indicatorsFor(c), this.status(c), this.filters, this.sourcesOf(c))) return false;
+		if (this.applied.privacy === 'has') return hidden;
+		if (hidden) return this.applied.privacy === null && this.applied.unlocked !== 'has' && !this.isFiltering();
+		const unlocked = this.isUnlockedForAWhile(c);
+		if (this.applied.unlocked === 'has' && !unlocked) return false;
+		if (this.applied.unlocked === 'lacks' && unlocked) return false;
+		if (!matchesFilters(c, this.indicatorsFor(c), this.status(c), this.applied, this.sourcesOf(c))) return false;
 		if (!this.search) return true;
 		const haystack = [c.title, c.summary, ...c.keywords, ...c.speakers].join(' ').toLowerCase();
 		return haystack.includes(this.search);
@@ -683,7 +724,7 @@ export class ConversationsTab {
 		const mark = synced.created.has(c.id) ? 'new' : synced.updated.has(c.id) ? 'updated' : '';
 		const privacy = this.privacy(c);
 		const secret = `${privacy.state === 'private' ? `private:${describeMatches(privacy.matches)}` : privacy.state}${this.plugin.settings.showPrivateTitles ? ':titled' : ''}`;
-		return [secret, this.status(c), this.paths.get(c.id) ?? '', mark, this.expanded.has(c.id) ? 'open' : ''].join('|');
+		return [secret, this.plugin.privacy.exceptionFor(c.id)?.until ?? '', this.status(c), this.paths.get(c.id) ?? '', mark, this.expanded.has(c.id) ? 'open' : ''].join('|');
 	}
 
 	/** The last sync's created and updated ids as sets (rebuilt only when another sync finished). */
@@ -710,7 +751,8 @@ export class ConversationsTab {
 			this.renderFooter();
 			return;
 		}
-		const visible = this.items.filter((c) => this.matches(c));
+		const held = this.held;
+		const visible = held ? this.items.filter((c) => held.has(c.id)) : this.items.filter((c) => this.matches(c));
 		if (this.loaded && this.items.length === 0) {
 			this.infoEl.setText(`No conversations in this period (${RANGE_LABELS[this.range].toLowerCase()}). Try a longer period.`);
 		} else if (this.isFiltering() && visible.length === 0) {
@@ -760,7 +802,55 @@ export class ConversationsTab {
 	}
 
 	private isFiltering(): boolean {
-		return this.search !== '' || activeFilterCount(this.filters) > 0;
+		return this.search !== '' || activeFilterCount(this.applied) > 0;
+	}
+
+	/** A choice changed: the icons follow at once, the list after a short pause (or on "Apply"). */
+	private filtersChanged(): void {
+		this.renderFilterBar();
+		if (!this.plugin.settings.panelApplyFiltersManually) this.debouncedApply();
+	}
+
+	/** Draws the list with the chosen filters. */
+	private applyFilters(): void {
+		this.debouncedApply.cancel();
+		this.held = null;
+		const linkAdded = this.filters.content.link !== undefined && this.applied.content.link === undefined;
+		this.applied = structuredClone(this.filters);
+		if (linkAdded) this.queueLinkChecks(this.items.filter((c) => !c.locked).map((c) => c.id));
+		this.shown = RENDER_BATCH;
+		this.renderList();
+	}
+
+	/** Filters chosen but not applied yet. */
+	private pendingFilters(): boolean {
+		return this.held !== null || JSON.stringify(this.filters) !== JSON.stringify(this.applied);
+	}
+
+	/** Every filter and the search off, at once (also with "Apply only when asked"). */
+	private clearFilters(): void {
+		this.filters = emptyFilters();
+		this.search = '';
+		if (this.searchEl) this.searchEl.value = '';
+		this.applyFilters();
+	}
+
+	/** The toolbar's clear and "apply only when asked" buttons, and the Apply button when filters wait. */
+	private renderFilterControls(): void {
+		if (!this.clearButton) return;
+		const anything = this.search !== '' || activeFilterCount(this.filters) > 0 || activeFilterCount(this.applied) > 0;
+		this.clearButton.toggleClass('is-disabled', !anything);
+		this.clearButton.setAttribute('aria-disabled', String(!anything));
+		const manual = this.plugin.settings.panelApplyFiltersManually;
+		const hint = manual ? 'Filters apply only when asked (click to apply them automatically)' : 'Filters apply after a short pause (click to apply them only when asked)';
+		this.manualButton.toggleClass('is-active', manual);
+		this.manualButton.setAttribute('aria-pressed', String(manual));
+		this.manualButton.setAttribute('aria-label', hint);
+		setTooltip(this.manualButton, hint);
+		if (manual && this.pendingFilters()) {
+			const apply = this.contentFiltersEl.createEl('button', { cls: 'mod-cta fieldy-filter-apply', text: 'Apply filters' });
+			apply.addEventListener('click', () => this.applyFilters());
+		}
 	}
 
 	/** Always-visible icon buttons matching the card icons: any → only with it → only without it. */
@@ -782,8 +872,7 @@ export class ConversationsTab {
 				else delete this.filters.content[key];
 				// Filtering by share link needs every loaded conversation checked, not only those seen so far.
 				if (key === 'link' && next) this.queueLinkChecks(this.items.filter((c) => !c.locked).map((c) => c.id));
-				this.shown = RENDER_BATCH;
-				this.renderList();
+				this.filtersChanged();
 			});
 			button.addClass('fieldy-filter-icon', `fieldy-ind-${key}`, rule === 'has' ? 'is-on' : rule === 'lacks' ? 'is-lacks' : 'is-any');
 			button.setAttribute('aria-pressed', rule ? 'true' : 'false');
@@ -792,6 +881,8 @@ export class ConversationsTab {
 		// Recorded with: one source at a time (click again for any). Pointless when sync is limited to one source.
 		if (this.plugin.settings.recordingSource === 'all') this.renderSourceFilters(icons);
 		if (this.plugin.privacy.active()) this.renderPrivacyFilter(icons);
+		// Shown while a conversation is unlocked for a while, or while its rule is set (so it can be turned off).
+		if (this.items.some((c) => this.isUnlockedForAWhile(c)) || this.filters.unlocked !== null) this.renderUnlockedFilter(icons);
 	}
 
 	/**
@@ -810,10 +901,33 @@ export class ConversationsTab {
 			: `${name}: any (click for only these)`;
 		const button = iconButton(icons, 'lock', hint, () => {
 			this.filters.privacy = nextContentRule(this.filters.privacy ?? undefined) ?? null;
-			this.shown = RENDER_BATCH;
-			this.renderList();
+			this.filtersChanged();
 		});
 		button.addClass('fieldy-filter-icon', 'fieldy-filter-private', rule === 'has' ? 'is-on' : rule === 'lacks' ? 'is-lacks' : 'is-any');
+		button.setAttribute('aria-pressed', rule ? 'true' : 'false');
+	}
+
+	/** Made not private for a while (a 2-hour exception still running). */
+	private isUnlockedForAWhile(c: FieldyConversation): boolean {
+		return this.plugin.privacy.exceptionFor(c.id)?.until !== undefined;
+	}
+
+	/** Conversations unlocked for a while: any → only them → none of them. */
+	private renderUnlockedFilter(icons: HTMLElement): void {
+		// Next to the lock when it is shown; on its own after a divider otherwise.
+		if (!this.plugin.privacy.active()) icons.createSpan({ cls: 'fieldy-filter-sep' });
+		const rule = this.filters.unlocked;
+		const count = this.items.filter((c) => this.isUnlockedForAWhile(c)).length;
+		const name = `Not private for a while (${count} loaded)`;
+		const hint =
+			rule === 'has' ? `${name}: only these (click to hide them)`
+			: rule === 'lacks' ? `${name}: hidden (click for any)`
+			: `${name}: any (click for only these)`;
+		const button = iconButton(icons, 'timer', hint, () => {
+			this.filters.unlocked = nextContentRule(this.filters.unlocked ?? undefined) ?? null;
+			this.filtersChanged();
+		});
+		button.addClass('fieldy-filter-icon', 'fieldy-filter-unlocked', rule === 'has' ? 'is-on' : rule === 'lacks' ? 'is-lacks' : 'is-any');
 		button.setAttribute('aria-pressed', rule ? 'true' : 'false');
 	}
 
@@ -824,7 +938,7 @@ export class ConversationsTab {
 			const name = `Recorded with: ${SOURCE_LABELS[source]}`;
 			const button = iconButton(icons, SOURCE_ICONS[source], on ? `${name} (click for any source)` : `${name} (click to show only these)`, () => {
 				this.filters.source = this.filters.source === source ? null : source;
-				this.renderList();
+				this.filtersChanged();
 			});
 			button.addClass('fieldy-filter-icon', 'fieldy-ind-source', on ? 'is-on' : 'is-any');
 			button.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -835,9 +949,10 @@ export class ConversationsTab {
 	private renderFilterBar(): void {
 		if (!this.filterBarEl) return;
 		this.renderContentFilters();
+		this.renderFilterControls();
 		const count = activeFilterCount(this.filters);
 		// The icon filters are always on screen, so the button only counts the hidden ones.
-		const hidden = count - Object.keys(this.filters.content).length - (this.filters.source !== null ? 1 : 0) - (this.filters.privacy !== null ? 1 : 0);
+		const hidden = count - Object.keys(this.filters.content).length - [this.filters.source, this.filters.privacy, this.filters.unlocked].filter((v) => v !== null).length;
 		const label = hidden > 0 ? `Filters (${hidden} active)` : 'Filters';
 		this.filterButton.toggleClass('is-active', hidden > 0 || this.filtersOpen);
 		this.filterButton.setAttribute('aria-label', label);
@@ -861,7 +976,7 @@ export class ConversationsTab {
 			setTooltip(el, label);
 			el.addEventListener('change', () => {
 				onChange(el.value === '' ? null : (el.value as T));
-				this.renderList();
+				this.filtersChanged();
 			});
 		};
 		select('Date', 'Any date', options.days.map((d) => [d, moment(d, 'YYYY-MM-DD').format('ddd D MMM YYYY')]), this.filters.day, (v) => (this.filters.day = v));
@@ -872,10 +987,7 @@ export class ConversationsTab {
 
 		if (count > 0) {
 			const clear = selects.createEl('button', { cls: 'fieldy-filter-clear', text: 'Clear filters' });
-			clear.addEventListener('click', () => {
-				this.filters = emptyFilters();
-				this.renderList();
-			});
+			clear.addEventListener('click', () => this.clearFilters());
 		}
 	}
 
@@ -934,6 +1046,9 @@ export class ConversationsTab {
 		main.createDiv({ cls: 'fieldy-conv-private-reason', text: reason });
 		const badge = header.createSpan({ cls: 'fieldy-badge fieldy-badge-private', text: privacy.state === 'private' ? 'Private' : 'Checking' });
 		setTooltip(badge, 'Privacy filters are set in the plugin settings (Privacy). A note from before the filter, if any, stays in your vault but is no longer updated.');
+		// An exception for this one conversation: it is then shown and synced like any other.
+		iconButton(header, 'timer', 'Not private for 2 hours, then private again', () => void this.plugin.setPrivacyException(c, true, TEMPORARY_EXCEPTION_MS));
+		iconButton(header, 'lock-open', 'Not private: show and sync this conversation (an exception to your filters)', () => void this.plugin.setPrivacyException(c, true));
 		return row;
 	}
 
@@ -958,6 +1073,8 @@ export class ConversationsTab {
 		const minutes = formatDuration(durationMinutes(c.startTime, c.endTime));
 		const meta = [moment(c.startTime).format('ddd D MMM YYYY · HH:mm'), minutes ?? (c.endTime ? null : 'in progress')];
 		if (c.speakers.length > 0) meta.push(c.speakers.length === 1 ? c.speakers[0] ?? '' : `${c.speakers.length} speakers`);
+		const until = this.plugin.privacy.exceptionFor(c.id)?.until;
+		if (until) meta.push(`not private until ${moment(until).format('HH:mm')}`);
 		main.createDiv({ cls: 'fieldy-conv-meta', text: meta.filter(Boolean).join(' · ') });
 		const badge = header.createSpan({ cls: `fieldy-badge fieldy-badge-${status}`, text: STATUS_LABELS[status] });
 		// Outlined when the last sync created or updated this note.
@@ -1008,9 +1125,17 @@ export class ConversationsTab {
 		if (status !== 'locked') {
 			iconButton(actions, 'text-cursor-input', 'Insert into the note you are editing…', (evt) => this.snippetMenu(evt, c, 'insert'));
 			iconButton(actions, 'copy', 'Copy to the clipboard…', (evt) => this.snippetMenu(evt, c, 'copy'));
+			// Made "not private" by hand while a filter still matches it: offer to undo.
+			if (this.plugin.privacy.isException(c.id) && this.plugin.privacy.checkFilters(c).state !== 'public') {
+				const until = this.plugin.privacy.exceptionFor(c.id)?.until;
+				const hint = until
+					? `Private again now (otherwise at ${moment(until).format('HH:mm')}): your filters match this conversation`
+					: 'Private again: remove the exception (your filters match this conversation)';
+				iconButton(actions, 'lock', hint, () => void this.plugin.setPrivacyException(c, false));
+			}
 		} else {
 			// Locked conversations have nothing else to copy.
-			iconButton(actions, 'fingerprint', 'Copy the conversation ID', () => void copyToClipboard(c.id, 'Conversation ID'));
+			iconButton(actions, 'fingerprint', 'Copy the conversation ID', () => void copyToClipboard(c.id, 'Conversation ID', this.view.flash));
 		}
 
 		if (isOpen) this.renderBody(row.createDiv({ cls: 'fieldy-conv-body' }), c, status);
@@ -1056,12 +1181,12 @@ export class ConversationsTab {
 				setTooltip(link, 'Public: anyone with this link can read what it shares.');
 				const copy = info.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Copy the share link' } });
 				setIcon(copy, 'copy');
-				copy.addEventListener('click', () => void copyToClipboard(active.url, 'Share link'));
+				copy.addEventListener('click', () => void copyToClipboard(active.url, 'Share link', this.view.flash));
 			} else {
 				info.setText(any ? 'Turned off: the link no longer opens.' : 'No share link. Turn on to create one (public: anyone with the link can read it).');
 			}
 			this.linkStates.set(c.id, active !== undefined);
-			if (this.filters.content.link) this.renderList();
+			if (this.applied.content.link) this.renderList();
 			else this.updateIndicators(c.id);
 		};
 
@@ -1073,7 +1198,7 @@ export class ConversationsTab {
 			try {
 				const author = current ? '' : await this.plugin.shareLinkAuthor();
 				if (on && !current && !author) {
-					new Notice('First add an author name for share links in the plugin settings (note content page): Fieldy shows it on every link.');
+					this.view.flash('First add an author name for share links in the plugin settings (note content page): Fieldy shows it on every link.');
 					return;
 				}
 				const client = this.plugin.client;
@@ -1084,11 +1209,11 @@ export class ConversationsTab {
 				this.plugin.reportRequestOutcome();
 				links = current ? links.map((l) => (l.id === updated.id ? updated : l)) : [updated];
 				this.view.data.setSharables(c.id, links);
-				new Notice(on ? 'Share link turned on.' : 'Share link turned off.');
+				this.view.flash(on ? 'Share link turned on.' : 'Share link turned off.');
 			} catch (err) {
 				if (!isCancellation(err)) {
 					this.plugin.reportRequestOutcome(err);
-					new Notice(describeError(err));
+					this.view.flash(describeError(err), 'error');
 				}
 			} finally {
 				busy = false;
@@ -1273,17 +1398,17 @@ export class ConversationsTab {
 
 	private async deliver(c: FieldyConversation, kind: SnippetKind, mode: 'insert' | 'copy'): Promise<void> {
 		const label = SNIPPET_LABELS[kind];
-		const notice = kind === 'transcript' || kind === 'full' ? new Notice('Fetching from Fieldy…', 0) : null;
+		const notice = kind === 'transcript' || kind === 'full' ? this.view.flash('Fetching from Fieldy…', 'info', 0) : null;
 		try {
 			const markdown = await this.view.data.snippet(c, kind);
 			if (!markdown.trim()) {
-				new Notice(`Fieldy has no ${label.toLowerCase()} for this conversation.`);
+				this.view.flash(`Fieldy has no ${label.toLowerCase()} for this conversation.`);
 				return;
 			}
-			if (mode === 'insert') insertIntoLastNote(this.view.app, markdown, label);
-			else await copyToClipboard(markdown, label);
+			if (mode === 'insert') insertIntoLastNote(this.view.app, markdown, label, this.view.flash);
+			else await copyToClipboard(markdown, label, this.view.flash);
 		} catch (err) {
-			if (!isCancellation(err)) new Notice(describeError(err));
+			if (!isCancellation(err)) this.view.flash(describeError(err), 'error');
 		} finally {
 			notice?.hide();
 		}
@@ -1298,7 +1423,7 @@ export class ConversationsTab {
 			if (this.plugin.settings.includeDismissedTasks) statuses.push('rejected', 'skipped', 'cancelled', 'expired');
 			const tasks = (await this.view.data.tasksFor(c.id)).filter((t) => statuses.includes(t.status));
 			if (tasks.length === 0) {
-				new Notice('Fieldy has no tasks for this conversation.');
+				this.view.flash('Fieldy has no tasks for this conversation.');
 				return;
 			}
 			const path = this.paths.get(c.id);
@@ -1307,10 +1432,10 @@ export class ConversationsTab {
 			const formatDate = (iso: string, f: string) => moment(iso).format(f);
 			const today = new Date().toISOString();
 			const text = tasks.map((t) => obsidianTaskLine(t, format, formatDate, link, today)).join('\n');
-			if (mode === 'insert') insertIntoLastNote(this.view.app, text, 'Tasks');
-			else await copyToClipboard(text, 'Tasks');
+			if (mode === 'insert') insertIntoLastNote(this.view.app, text, 'Tasks', this.view.flash);
+			else await copyToClipboard(text, 'Tasks', this.view.flash);
 		} catch (err) {
-			if (!isCancellation(err)) new Notice(describeError(err));
+			if (!isCancellation(err)) this.view.flash(describeError(err), 'error');
 		}
 	}
 
@@ -1343,11 +1468,11 @@ export class ConversationsTab {
 
 	private async deliverText(text: string | null, label: string, mode: 'insert' | 'copy'): Promise<void> {
 		if (!text?.trim()) {
-			new Notice(`Fieldy has no ${label.toLowerCase()} for this conversation.`);
+			this.view.flash(`Fieldy has no ${label.toLowerCase()} for this conversation.`);
 			return;
 		}
-		if (mode === 'insert') insertIntoLastNote(this.view.app, text, label);
-		else await copyToClipboard(text, label);
+		if (mode === 'insert') insertIntoLastNote(this.view.app, text, label, this.view.flash);
+		else await copyToClipboard(text, label, this.view.flash);
 	}
 
 	private async deliverShareLink(c: FieldyConversation, mode: 'insert' | 'copy'): Promise<void> {
@@ -1365,7 +1490,7 @@ export class ConversationsTab {
 	/** The meeting as one line: a Tasks plugin item scheduled on its day, or a plain list item with its time and place. */
 	private async deliverEvent(c: FieldyConversation, mode: 'insert' | 'copy', tasksFormat: boolean): Promise<void> {
 		if (!c.calendarEventId) {
-			new Notice('This conversation is not linked to a calendar event.');
+			this.view.flash('This conversation is not linked to a calendar event.');
 			return;
 		}
 		const link = this.noteLink(c);
@@ -1426,20 +1551,20 @@ export class ConversationsTab {
 		const only = sources && sources.size === 1 ? [...sources][0] : undefined;
 		if (!only || this.plugin.settings.recordingSource !== 'all') return;
 		this.filters.source = this.filters.source === only ? null : only;
-		this.renderList();
+		this.filtersChanged();
 	}
 
 	private deliverLink(path: string, mode: 'insert' | 'copy'): void {
 		const file = this.view.app.vault.getFileByPath(path);
 		if (!file) {
-			new Notice('That note no longer exists.');
+			this.view.flash('That note no longer exists.');
 			return;
 		}
 		const target = this.view.app.workspace.getMostRecentLeaf()?.view;
 		const sourcePath = target instanceof MarkdownView ? (target.file?.path ?? '') : '';
 		const link = this.view.app.fileManager.generateMarkdownLink(file, sourcePath);
-		if (mode === 'insert') insertIntoLastNote(this.view.app, link, 'Link');
-		else void copyToClipboard(link, 'Link');
+		if (mode === 'insert') insertIntoLastNote(this.view.app, link, 'Link', this.view.flash);
+		else void copyToClipboard(link, 'Link', this.view.flash);
 	}
 
 	/** The two ways back to the Fieldy version of an edited note. */
@@ -1464,9 +1589,9 @@ export class ConversationsTab {
 	private async restore(c: FieldyConversation, choice: RestoreChoice): Promise<void> {
 		try {
 			await this.plugin.restoreFieldyVersion(c.id, choice);
-			new Notice(choice === 'keep-both' ? 'Fieldy version restored; your edits are kept below it.' : 'Fieldy version restored.');
+			this.view.flash(choice === 'keep-both' ? 'Fieldy version restored; your edits are kept below it.' : 'Fieldy version restored.');
 		} catch (err) {
-			if (!isCancellation(err)) new Notice(describeError(err));
+			if (!isCancellation(err)) this.view.flash(describeError(err), 'error');
 		}
 		await this.refreshLocal();
 	}

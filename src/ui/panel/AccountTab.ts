@@ -1,4 +1,4 @@
-import { moment, Notice } from 'obsidian';
+import { moment } from 'obsidian';
 import type { FieldyMemoryTemplate } from '../../api/types';
 import { connectionLabel } from '../../connection';
 import { EditedNotesModal } from '../EditedNotesModal';
@@ -139,7 +139,7 @@ export class AccountTab {
 			if (profiles.length > 0) {
 				profilesEl
 					.createEl('button', { text: 'Copy names' })
-					.addEventListener('click', () => void copyToClipboard(profiles.map((p) => p.name).join('\n'), 'Speaker names'));
+					.addEventListener('click', () => void copyToClipboard(profiles.map((p) => p.name).join('\n'), 'Speaker names', this.view.flash));
 			}
 
 			templatesEl.empty();
@@ -156,14 +156,14 @@ export class AccountTab {
 				}
 				details
 					.createEl('button', { text: 'Copy template' })
-					.addEventListener('click', () => void copyToClipboard(templateText(template), 'Template'));
+					.addEventListener('click', () => void copyToClipboard(templateText(template), 'Template', this.view.flash));
 			}
 		} catch (err) {
 			if (isCancellation(err)) return;
 			const message = describeError(err);
 			profilesEl.setText(message);
 			templatesEl.setText(message);
-			new Notice(message);
+			this.view.flash(message);
 		}
 	}
 }

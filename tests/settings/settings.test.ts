@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, emailName, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
+import { DEFAULT_SETTINGS, emailName, exceptionActive, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
 import { sanitizeSyncState } from '../../src/sync/SyncState';
 
 describe('sanitizeSettings', () => {
@@ -25,6 +25,18 @@ describe('sanitizeSettings', () => {
 		expect(s.subfolders).toBe('year');
 	});
 
+	it('keeps the end of temporary exceptions', () => {
+		const s = sanitizeSettings({ privacyExceptions: [{ id: 'a', until: '2026-11-03T14:00:00.000Z' }, { id: 'b', until: 'not a date' }] });
+		expect(s.privacyExceptions).toEqual([
+			{ id: 'a', title: '', startTime: '', until: '2026-11-03T14:00:00.000Z' },
+			{ id: 'b', title: '', startTime: '' },
+		]);
+		const [a, b] = s.privacyExceptions;
+		expect(exceptionActive(a!, Date.parse('2026-11-03T13:59:00Z'))).toBe(true);
+		expect(exceptionActive(a!, Date.parse('2026-11-03T14:00:00Z'))).toBe(false);
+		expect(exceptionActive(b!, Date.parse('2030-01-01T00:00:00Z'))).toBe(true);
+	});
+
 	it('takes the name of an email for share links', () => {
 		expect(emailName('alex.martin@example.com')).toBe('alex.martin');
 		expect(emailName('alex+fieldy@example.com')).toBe('alex');
@@ -39,7 +51,9 @@ describe('sanitizeSettings', () => {
 			privateTimeRules: 'not a list',
 			deletePrivateNotes: 'yes',
 			showPrivateTitles: true,
+			privacyExceptions: [{ id: 'c1', title: 'Call', startTime: '2026-10-01T10:00:00Z' }, { id: 'c1' }, { title: 'no id' }, 'junk'],
 		});
+		expect(s.privacyExceptions).toEqual([{ id: 'c1', title: 'Call', startTime: '2026-10-01T10:00:00Z' }]);
 		expect(s.privateKeywords).toBe('');
 		expect(s.privateSpeakers).toBe('Dr Martin');
 		expect(s.syncTimeRules).toEqual([{ op: 'and', days: [1, 2], from: '08:00', to: '18:00' }]);

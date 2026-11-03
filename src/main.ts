@@ -9,7 +9,7 @@ import { connectionLabel, nextConnectionState, type ConnectionState } from './co
 import { buildDiagnostics } from './diagnostics';
 import { ID_KEY } from './markdown/ConversationRenderer';
 import { PrivacyGuard, sanitizeTranscriptChecks, TranscriptCheckCache, type TranscriptCheck } from './privacy/PrivacyGuard';
-import { emailName, ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
+import { emailName, exceptionActive, ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
 import { FieldySettingsTab } from './settings/SettingsTab';
 import { ObsidianNoteStore } from './sync/ObsidianNoteStore';
 import type { NoteRef } from './sync/NoteStore';
@@ -51,7 +51,8 @@ export default class FieldySyncPlugin extends Plugin {
 	privacy!: PrivacyGuard;
 	/**
 	 * `connection-changed` (state: ConnectionState), `sync-started`,
-	 * `sync-finished` (summary: SyncRunSummary | null) and `settings-changed`.
+	 * `sync-finished` (summary: SyncRunSummary | null), `settings-changing`
+	 * (just before a change) and `settings-changed`.
 	 */
 	readonly events = new Events();
 	connection: ConnectionState = { status: 'unknown' };
@@ -69,6 +70,30 @@ export default class FieldySyncPlugin extends Plugin {
 	private saving: Promise<void> = Promise.resolve();
 	private saveQueued: Promise<void> | null = null;
 	private persistTimer: number | null = null;
+
+	/**
+	 * Shows a short message: at the bottom of the Fieldy panel while it is open
+	 * and visible (Obsidian's notices appear at the top right, over the panel's
+	 * header), otherwise as an Obsidian notice. `ms` 0 keeps it until hidden.
+	 */
+	readonly notify = (text: string, kind: 'info' | 'error' = 'info', ms?: number): { hide: () => void; setText: (text: string) => void } => {
+		const panel = this.visiblePanel();
+		if (panel) return panel.flash(text, kind, ms);
+		const notice = new Notice(text, ms);
+		return { hide: () => notice.hide(), setText: (next) => notice.setMessage(next) };
+	};
+
+	/** The Fieldy panel if it is open and on screen (its sidebar expanded and its tab selected). */
+	private visiblePanel(): FieldyView | null {
+		for (const leaf of this.app.workspace.getLeavesOfType(FIELDY_VIEW_TYPE)) {
+			const view = leaf.view;
+			if (!(view instanceof FieldyView)) continue;
+			const split = leaf.getRoot();
+			const collapsed = (split === this.app.workspace.rightSplit || split === this.app.workspace.leftSplit) && (split as { collapsed?: boolean }).collapsed === true;
+			if (!collapsed && view.containerEl.isShown()) return view;
+		}
+		return null;
+	}
 
 	override async onload(): Promise<void> {
 		await this.loadPluginData();
@@ -123,6 +148,8 @@ export default class FieldySyncPlugin extends Plugin {
 
 		this.app.workspace.onLayoutReady(() => {
 			this.showMobileNotice();
+			// Temporary exceptions that ended while Obsidian was closed lock again now.
+			void this.expireExceptions();
 			this.scheduleAutoSync();
 			if (this.settings.syncOnStartup) {
 				this.startupTimer = window.setTimeout(() => {
@@ -137,6 +164,7 @@ export default class FieldySyncPlugin extends Plugin {
 		this.engine?.cancel();
 		if (this.startupTimer !== null) window.clearTimeout(this.startupTimer);
 		if (this.intervalId !== null) window.clearInterval(this.intervalId);
+		if (this.exceptionTimer !== null) window.clearTimeout(this.exceptionTimer);
 		this.startupTimer = null;
 		this.intervalId = null;
 		// A settings change still waiting to be written.
@@ -201,6 +229,7 @@ export default class FieldySyncPlugin extends Plugin {
 		// data.json changed on disk (e.g. Obsidian Sync from another device).
 		const raw = ((await this.loadData()) ?? {}) as Partial<PluginData>;
 		// A running sync works on its own settings snapshot, so settings apply right away.
+		this.events.trigger('settings-changing');
 		this.settings = sanitizeSettings(raw.settings);
 		const external = sanitizeSyncState(raw.state);
 		// Both devices' transcript checks are valid; keep them all.
@@ -232,6 +261,7 @@ export default class FieldySyncPlugin extends Plugin {
 	}
 
 	async updateSetting(key: keyof FieldySyncSettings, value: unknown): Promise<void> {
+		this.events.trigger('settings-changing');
 		const before = this.settings.apiKeySecretId;
 		this.settings = sanitizeSettings({ ...this.settings, [key]: value });
 		this.persistSoon();
@@ -245,6 +275,7 @@ export default class FieldySyncPlugin extends Plugin {
 
 	private applyRuntimeSettings(): void {
 		this.limiter.setLimit(this.settings.requestsPerMinute);
+		this.scheduleExceptionExpiry();
 		this.statusBar?.setVisible(this.settings.showStatusBar);
 		this.scheduleAutoSync();
 	}
@@ -330,12 +361,12 @@ export default class FieldySyncPlugin extends Plugin {
 	async runSync(trigger: SyncTrigger, request: Omit<SyncRequest, 'trigger'> = {}): Promise<SyncRunSummary | null> {
 		const automatic = AUTOMATIC.has(trigger);
 		if (!this.hasApiKey()) {
-			if (!automatic) new Notice(new FieldyError('missing-api-key', 'No API key').userMessage);
+			if (!automatic) this.notify(new FieldyError('missing-api-key', 'No API key').userMessage, 'error');
 			this.setConnection({ status: 'not-configured' });
 			return null;
 		}
 		if (this.engine.isRunning) {
-			if (!automatic) new Notice('A Fieldy sync is already running.');
+			if (!automatic) this.notify('A Fieldy sync is already running.');
 			return null;
 		}
 		this.statusBar?.start();
@@ -349,10 +380,11 @@ export default class FieldySyncPlugin extends Plugin {
 				this.reportRequestOutcome();
 			}
 			if (shouldNotify(summary, automatic, this.settings.notices)) {
-				new Notice(formatSyncSummary(summary), summary.fatal || summary.counts.failed > 0 ? 12_000 : 6_000);
+				const failed = summary.fatal !== null || summary.counts.failed > 0;
+				this.notify(formatSyncSummary(summary), failed ? 'error' : 'info', failed ? 12_000 : 6_000);
 			}
 		} catch (err) {
-			if (!(err instanceof SyncAlreadyRunningError) || !automatic) new Notice(describeError(err));
+			if (!(err instanceof SyncAlreadyRunningError) || !automatic) this.notify(describeError(err), 'error');
 		} finally {
 			await this.mergePendingExternalState();
 			this.statusBar?.finish(summary ?? this.syncState.lastRun);
@@ -386,20 +418,69 @@ export default class FieldySyncPlugin extends Plugin {
 	/** Re-renders one note from Fieldy (user edits are still protected). */
 	async refreshNote(id: string, conversation?: FieldyConversation): Promise<void> {
 		if (!this.hasApiKey()) {
-			new Notice(new FieldyError('missing-api-key', 'No API key').userMessage);
+			this.notify(new FieldyError('missing-api-key', 'No API key').userMessage, 'error');
 			return;
 		}
 		try {
 			const fresh = conversation ?? (await this.client.getConversation(id));
 			if (!fresh) {
-				new Notice('This conversation no longer exists in Fieldy.');
+				this.notify('This conversation no longer exists in Fieldy.', 'error');
 				return;
 			}
 			await this.runSync('refresh', { conversations: [fresh], onlyIds: new Set([id]), force: true, createNew: false, recreateDeleted: false });
 		} catch (err) {
 			this.reportRequestOutcome(err);
-			new Notice(describeError(err));
+			this.notify(describeError(err), 'error');
 		}
+	}
+
+	/**
+	 * Makes one conversation "not private" (an exception to the privacy
+	 * filters), or private again. The conversation's note, if any, is
+	 * refreshed right away.
+	 */
+	async setPrivacyException(conversation: Pick<FieldyConversation, 'id' | 'title' | 'startTime'>, exception: boolean, forMs?: number): Promise<void> {
+		const others = this.settings.privacyExceptions.filter((e) => e.id !== conversation.id);
+		const until = forMs ? { until: new Date(Date.now() + forMs).toISOString() } : {};
+		const next = exception ? [...others, { id: conversation.id, title: conversation.title ?? '', startTime: conversation.startTime, ...until }] : others;
+		await this.updateSetting('privacyExceptions', next);
+		await this.refreshIfNoted(conversation.id);
+	}
+
+	/** A note in the vault follows a privacy change at once: updated again, or frozen (or trashed, if set) as private. */
+	private async refreshIfNoted(id: string): Promise<void> {
+		const record = this.syncState.get(id);
+		if (record && record.status !== 'deleted') await this.refreshNote(id);
+	}
+
+	private exceptionTimer: number | null = null;
+
+	/**
+	 * Locks temporary exceptions again when they end: removes them from the
+	 * settings and refreshes their notes. Rescheduled whenever settings change.
+	 */
+	private scheduleExceptionExpiry(): void {
+		if (this.exceptionTimer !== null) window.clearTimeout(this.exceptionTimer);
+		this.exceptionTimer = null;
+		const ends = this.settings.privacyExceptions.filter((e) => e.until).map((e) => Date.parse(e.until ?? ''));
+		if (ends.length === 0) return;
+		// Timers cannot wait longer than about 24 days; check again by then.
+		const delay = Math.min(Math.max(0, Math.min(...ends) - Date.now()) + 1000, 2 ** 31 - 1);
+		this.exceptionTimer = window.setTimeout(() => {
+			this.exceptionTimer = null;
+			void this.expireExceptions();
+		}, delay);
+	}
+
+	private async expireExceptions(): Promise<void> {
+		const now = Date.now();
+		const ended = this.settings.privacyExceptions.filter((e) => !exceptionActive(e, now));
+		if (ended.length === 0) {
+			this.scheduleExceptionExpiry();
+			return;
+		}
+		await this.updateSetting('privacyExceptions', this.settings.privacyExceptions.filter((e) => exceptionActive(e, now)));
+		for (const e of ended) await this.refreshIfNoted(e.id);
 	}
 
 	/**
@@ -474,7 +555,7 @@ export default class FieldySyncPlugin extends Plugin {
 	async openNote(path: string): Promise<void> {
 		const file = this.app.vault.getFileByPath(path);
 		if (!file) {
-			new Notice('That note no longer exists.');
+			this.notify('That note no longer exists.', 'error');
 			return;
 		}
 		await this.app.workspace.getLeaf(false).openFile(file);
@@ -503,13 +584,13 @@ export default class FieldySyncPlugin extends Plugin {
 		const url = await this.shareLinkUrl(id);
 		if (!url) return;
 		await navigator.clipboard.writeText(url);
-		new Notice('Fieldy share link copied to the clipboard.');
+		this.notify('Fieldy share link copied to the clipboard.');
 	}
 
 	/** The conversation's first active share link; null (after a notice) when it has none or the lookup fails. */
 	async shareLinkUrl(id: string): Promise<string | null> {
 		if (!this.settings.useShareLinks) {
-			new Notice('Share links are turned off in the plugin settings (note content page).');
+			this.notify('Share links are turned off in the plugin settings (note content page).');
 			return null;
 		}
 		try {
@@ -517,13 +598,13 @@ export default class FieldySyncPlugin extends Plugin {
 			this.reportRequestOutcome();
 			const first = links[0];
 			if (!first) {
-				new Notice('This conversation has no active share link. Create one in the Fieldy app first.');
+				this.notify('This conversation has no active share link. Turn it on in its card or create one in the Fieldy app.');
 				return null;
 			}
 			return first.url;
 		} catch (err) {
 			this.reportRequestOutcome(err);
-			new Notice(describeError(err));
+			this.notify(describeError(err), 'error');
 			return null;
 		}
 	}
@@ -544,9 +625,9 @@ export default class FieldySyncPlugin extends Plugin {
 		});
 		try {
 			await navigator.clipboard.writeText(redactSecrets(text, [this.getApiKey()]));
-			new Notice('Diagnostics copied to the clipboard.');
+			this.notify('Diagnostics copied to the clipboard.');
 		} catch (err) {
-			new Notice(describeError(err));
+			this.notify(describeError(err), 'error');
 		}
 	}
 
@@ -580,7 +661,7 @@ export default class FieldySyncPlugin extends Plugin {
 			name: 'Test connection',
 			callback: async () => {
 				const state = await this.testConnection();
-				new Notice(connectionLabel(state));
+				this.notify(connectionLabel(state), state.status === 'error' ? 'error' : 'info');
 			},
 		});
 		this.addCommand({ id: 'review-edited-notes', name: 'Review edited notes', callback: () => new EditedNotesModal(this.app, this).open() });
@@ -601,7 +682,7 @@ export default class FieldySyncPlugin extends Plugin {
 				if (!this.engine.isRunning) return false;
 				if (!checking) {
 					this.engine.cancel();
-					new Notice('Cancelling the Fieldy sync…');
+					this.notify('Cancelling the Fieldy sync…');
 				}
 				return true;
 			},

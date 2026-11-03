@@ -58,6 +58,30 @@ export class FieldyView extends ItemView {
 		return 'messages-square';
 	}
 
+	private flashEl: HTMLElement | null = null;
+	private flashTimer: number | null = null;
+
+	/**
+	 * A short message at the bottom of the panel, instead of an Obsidian notice
+	 * (those appear at the top right, over the panel's own header). Replaces
+	 * the previous one; click to dismiss. `ms` 0 keeps it until hidden.
+	 */
+	readonly flash = (text: string, kind: 'info' | 'error' = 'info', ms?: number): { hide: () => void; setText: (text: string) => void } => {
+		this.flashEl?.remove();
+		if (this.flashTimer !== null) window.clearTimeout(this.flashTimer);
+		const el = this.contentEl.createDiv({ cls: `fieldy-flash is-${kind}`, text, attr: { role: kind === 'error' ? 'alert' : 'status' } });
+		this.flashEl = el;
+		const hide = () => {
+			if (this.flashEl === el) this.flashEl = null;
+			el.addClass('is-leaving');
+			window.setTimeout(() => el.remove(), 200);
+		};
+		el.addEventListener('click', hide);
+		const duration = ms ?? (kind === 'error' ? 8000 : 3500);
+		this.flashTimer = duration > 0 ? window.setTimeout(hide, duration) : null;
+		return { hide, setText: (next) => el.setText(next) };
+	};
+
 	override async onOpen(): Promise<void> {
 		const root = this.contentEl;
 		root.empty();
@@ -100,6 +124,8 @@ export class FieldyView extends ItemView {
 				if (this.tab === 'account') this.account.render();
 			}),
 		);
+		// Before a setting changes (a privacy filter or exception, for example), the filtered list keeps its cards until the filters apply again.
+		this.registerEvent(events.on('settings-changing', () => this.conversations.holdListing()));
 		this.registerEvent(
 			events.on(
 				'settings-changed',

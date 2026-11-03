@@ -33,6 +33,7 @@ export function buildDiagnostics(input: DiagnosticsInput): string {
 		safeSettings[key] = count === 0 ? '' : `(${count} hidden)`;
 	}
 	safeSettings.privateTimeRules = `(${settings.privateTimeRules.length} hidden)`;
+	safeSettings.privacyExceptions = `(${settings.privacyExceptions.length} hidden)`;
 	// Error messages can contain note paths (built from conversation titles), so only kinds are reported.
 	const errorKinds: Record<string, number> = {};
 	for (const error of last?.errors ?? []) errorKinds[error.kind] = (errorKinds[error.kind] ?? 0) + 1;

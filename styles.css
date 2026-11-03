@@ -520,10 +520,14 @@
 	align-items: center;
 }
 
+/* Between groups of filter icons: content, recording source, privacy. */
 .fieldy-filter-sep {
-	align-self: stretch;
-	margin: var(--size-2-1) var(--size-2-1);
-	border-left: 1px solid var(--background-modifier-border);
+	align-self: center;
+	height: calc(var(--icon-size) + var(--size-4-2));
+	margin: 0 var(--size-4-1);
+	border-left: 2px solid var(--text-faint);
+	border-radius: 1px;
+	opacity: 0.6;
 }
 
 .fieldy-filter-icon {
@@ -1224,4 +1228,53 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	max-width: 22em;
+}
+
+/* Panel messages: at the bottom of the panel, instead of notices over its header. */
+.workspace-leaf-content[data-type='fieldy-sync-panel'] .view-content {
+	position: relative;
+}
+
+.fieldy-flash {
+	position: sticky;
+	bottom: var(--size-4-2);
+	margin: var(--size-4-2) var(--size-4-2) 0;
+	padding: var(--size-2-3) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background-color: var(--background-modifier-message);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-small);
+	box-shadow: var(--shadow-s);
+	cursor: pointer;
+	z-index: 2;
+	animation: fieldy-flash-in 150ms ease-out;
+	transition: opacity 200ms ease;
+}
+
+.fieldy-flash.is-error {
+	background-color: var(--background-modifier-error);
+}
+
+.fieldy-flash.is-leaving {
+	opacity: 0;
+}
+
+@keyframes fieldy-flash-in {
+	from {
+		opacity: 0;
+		transform: translateY(6px);
+	}
+}
+
+/* Filter controls: clear all (greyed while nothing filters), apply only when asked, and the Apply button. */
+.fieldy-panel-toolbar .clickable-icon.is-disabled {
+	opacity: 0.35;
+	pointer-events: none;
+}
+
+.fieldy-filter-apply {
+	margin-inline-start: auto;
+	padding: 0 var(--size-4-3);
+	height: var(--input-height);
+	font-size: var(--font-ui-smaller);
 }

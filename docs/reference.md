@@ -115,7 +115,7 @@ An edited note is never overwritten and the original is never lost: the Fieldy v
 
 | Situation | Behaviour |
 | --- | --- |
-| You delete a note | It is not re-created by sync (unless **Re-create deleted notes** is on). You can bring it back from the import dialog or the panel. |
+| You delete a note | It is not re-created by sync (unless **Re-create notes you deleted** is on). You can bring it back from the import dialog or the panel. |
 | You rename or move a note | It keeps syncing at its new location. |
 | You remove the markers | The whole note becomes your edited version and is left alone. Restoring appends a fresh Fieldy section. |
 | A conversation is locked by your Fieldy plan's history window | Existing notes are never replaced with the locked (redacted) version; locked conversations are not imported. |
@@ -157,19 +157,19 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Setting | Default | Description |
 | --- | --- | --- |
 | Import new conversations during sync | On | Off: sync only updates notes you already have. |
+| Re-create notes you deleted | Off | Imports again notes you deleted. |
 | Sync window | Last 7 days | Conversations each sync checks (last day to last 365 days). |
 | Recording source | All sources | Only wearable, phone or desktop recordings. |
-| Include brief conversations | On | Short conversations Fieldy marks as brief. |
+| Sync brief conversations | On | Short conversations Fieldy marks as brief. |
 | Only sync conversations recorded at | (any time) | [Time rules](#time-rules), such as *Mon–Fri 08:00–18:00*. Sync only handles conversations that started in one of them: the others get no note and their notes are not updated, as if outside the sync window. The import dialog and the panel still show everything. |
 | Sync on startup | Off | Syncs about 10 seconds after Obsidian starts. |
 | Automatic sync | Off | Every 15 minutes to once a day. |
-| Re-create deleted notes | Off | Imports again notes you deleted. |
 
 ### Folders and file names
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| Folder | `Fieldy` | Where new notes go. |
+| Folder for new notes | `Fieldy` | Where new notes go. |
 | Subfolders | None | By year (`Fieldy/2026`), month (`Fieldy/2026-10`), year then month (`Fieldy/2026/2026-10`), year then ISO week (`Fieldy/2026/2026-W44`), year/month/day, or a custom format. Existing notes are not moved. |
 | Subfolder format | `YYYY/MM` | The custom [Moment.js format](https://momentjs.com/docs/#/displaying/format/), such as `YYYY/[Q]Q`. |
 | File name pattern | `{date} - {title}` | Tokens `{date}`, `{time}`, `{title}` and `{id}`. |
@@ -194,7 +194,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| Tasks | On | Fieldy's action items as checkboxes. |
+| Tasks in notes | On | Fieldy's action items as checkboxes. |
 | Completed tasks | On | Also list tasks done in Fieldy, ticked. |
 | Dismissed tasks | Off | Also list rejected, skipped, cancelled or expired tasks, as `[-]`. |
 | Due dates as Dataview fields | Off | Writes `[due:: 2026-11-05]` instead of `(due 2026-11-05)`, so [Dataview](guide.md#dataview) can sort and filter by due date. |
@@ -204,7 +204,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| Transcript | On | Adds the transcript to notes. One extra request per new or changed conversation. The options below apply while it is on. |
+| Include the transcript | On | Adds the transcript to notes. One extra request per new or changed conversation. The options below apply while it is on. |
 | Transcript format | Timestamped, with speakers | Or timestamped segments, or readable paragraphs. Speaker profile names are used where Fieldy links them. |
 | Transcript timestamps | Time of day | Or time since the start of the conversation. |
 | Collapse transcript | Off | Puts the transcript in a collapsed callout. |
@@ -216,7 +216,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Date format in notes | `YYYY-MM-DD HH:mm` | The "When" line. |
 | Property dates | Local time | Local `YYYY-MM-DDTHH:mm:ss` (works with Obsidian date properties) or Fieldy's UTC ISO 8601 values. |
 | Speakers / Keywords / Location / Template property | On | The optional `fieldy_speakers`, `fieldy_keywords`, `fieldy_location` and `fieldy_template` properties. |
-| Tags | `fieldy` | Added to new notes. |
+| Tags for new notes | `fieldy` | Added to new notes. |
 | Add keywords as tags | Off | Applied when a note is created. |
 | Add title as alias | Off | Applied when a note is created. |
 
@@ -246,6 +246,7 @@ One entry per line (or separated by commas). Case and accents are ignored.
 | Show titles of private conversations | Off | Private cards (and import rows) show the title, and the brief icon for brief conversations, instead of "Private conversation". |
 | Move notes of private conversations to the trash | Off | Asks first. Sync moves notes of private conversations to the trash (Obsidian's or the system's, per **Files and links**), with any text you added. Without the filter, the conversation is imported again like a new one. |
 | Notes of private conversations | | Lists notes imported before a filter matched their conversation, to open and delete them. |
+| Not private (exceptions) | | Conversations made not private by hand, with the unlock button on a private card or banner (or for 2 hours with the timer button, with the end time shown). Shown and synced although a filter matches them; delete one to make it private again. |
 
 ### Time rules
 
@@ -321,7 +322,7 @@ The panel stays light on long histories: it draws 100 cards at a time, checks sh
 | "Fieldy returned a response the plugin could not understand" | The API may have changed. Please open an issue with the copied diagnostics. |
 | A note is not updating | Its banner tells you why: *Edited* (you changed the section; see **Review edited notes**), *Paused* (`fieldy_sync: false`) or *Private* (a privacy filter matches). Otherwise it may be outside the sync window or your sync times, or locked by your plan. |
 | The banner does not appear | It shows in Live Preview and reading view, not in source mode, and only when both markers are present once each. Check **Section banner** under Note content. |
-| A note I deleted came back | **Re-create deleted notes** is on, or the sync state was reset. |
+| A note I deleted came back | **Re-create notes you deleted** is on, or the sync state was reset. |
 | A conversation is missing from my notes but shows in the panel | It may be private (its card says which filter), outside your sync times, or outside the sync window: import it, or check **Privacy** and **Sync**. |
 | Old conversations are missing | Use **Import conversations** with a larger range. Conversations outside your plan's history window are locked by Fieldy. |
 | A `fieldy` block is empty | It reads your Fieldy notes only: import the period first, or widen `period` (tasks default to all time, conversations to the last 7 days). A message above the block points out options it did not understand. |

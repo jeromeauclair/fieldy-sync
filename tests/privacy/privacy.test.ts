@@ -139,6 +139,27 @@ describe('PrivacyGuard', () => {
 		expect(guard.check(c).state).toBe('public');
 	});
 
+	it('keeps an exception public while the filters still match it', () => {
+		const { guard } = guardFor({ privateKeywords: 'acme', privacyExceptions: [{ id: 'c', title: 'Acme call', startTime: '' }] });
+		const c = makeConversation('c', { title: 'Acme call' });
+		expect(guard.check(c)).toEqual({ state: 'public' });
+		expect(guard.checkFilters(c).state).toBe('private');
+		expect(guard.isException('c')).toBe(true);
+		expect(guard.check(makeConversation('d', { title: 'Acme again' })).state).toBe('private');
+	});
+
+	it('ends a temporary exception at its time', () => {
+		let now = Date.parse('2026-11-03T12:00:00Z');
+		const settings = testSettings({ privateKeywords: 'acme', privacyExceptions: [{ id: 'c', title: 'Acme call', startTime: '', until: '2026-11-03T14:00:00.000Z' }] });
+		const guard = new PrivacyGuard({ settings: () => settings, client: new FakeFieldyApi(), cache: new TranscriptCheckCache(), now: () => now });
+		const c = makeConversation('c', { title: 'Acme call' });
+		expect(guard.check(c).state).toBe('public');
+		expect(guard.exceptionFor('c')?.until).toBe('2026-11-03T14:00:00.000Z');
+		now = Date.parse('2026-11-03T14:00:01Z');
+		expect(guard.check(c).state).toBe('private');
+		expect(guard.exceptionFor('c')).toBeUndefined();
+	});
+
 	it('drops malformed stored results', () => {
 		expect(sanitizeTranscriptChecks({ a: { key: 'k', updatedAt: null, matches: [{ kind: 'nope', value: 'x' }, { kind: 'keyword', value: 'y' }] }, b: 'junk' })).toEqual({
 			a: { key: 'k', updatedAt: null, matches: [{ kind: 'keyword', value: 'y' }] },

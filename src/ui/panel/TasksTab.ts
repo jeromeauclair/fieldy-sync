@@ -1,4 +1,4 @@
-import { ConfirmationModal, debounce, Menu, Modal, moment, Notice, Setting, setIcon, setTooltip, type App } from 'obsidian';
+import { ConfirmationModal, debounce, Menu, Modal, moment, Setting, setIcon, setTooltip, type App } from 'obsidian';
 import type { FieldyTask, TaskChanges, TaskStatus } from '../../api/types';
 import { taskLine } from '../../markdown/ConversationRenderer';
 import { obsidianTaskLine, type TasksFormat } from '../../markdown/obsidianTasks';
@@ -238,7 +238,7 @@ export class TasksTab {
 			this.privacyFailed = false;
 			this.queuePrivacyChecks();
 		} catch (err) {
-			if (!isCancellation(err)) new Notice(describeError(err));
+			if (!isCancellation(err)) this.view.flash(describeError(err), 'error');
 		} finally {
 			this.loading = false;
 			this.renderList();
@@ -469,11 +469,11 @@ export class TasksTab {
 			if (index !== -1) this.tasks[index] = updated;
 			await this.view.data.replaceTask(updated);
 			const hasNote = task.memoryId ? this.paths.has(task.memoryId) : false;
-			new Notice(hasNote ? `${done} Its note shows it after the next sync.` : done);
+			this.view.flash(hasNote ? `${done} Its note shows it after the next sync.` : done);
 		} catch (err) {
 			if (!isCancellation(err)) {
 				this.plugin.reportRequestOutcome(err);
-				new Notice(describeError(err));
+				this.view.flash(describeError(err), 'error');
 			}
 		} finally {
 			this.pending.delete(task.id);
@@ -516,8 +516,8 @@ export class TasksTab {
 		const what = tasks.length === 1 ? 'Task' : 'Tasks';
 		const deliver = (format: TasksFormat | null) => {
 			const text = this.markdown(tasks, format);
-			if (mode === 'insert') insertIntoLastNote(this.view.app, text, what);
-			else void copyToClipboard(text, what);
+			if (mode === 'insert') insertIntoLastNote(this.view.app, text, what, this.view.flash);
+			else void copyToClipboard(text, what, this.view.flash);
 		};
 		if (!tasksPluginEnabled(this.view.app)) {
 			deliver(null);

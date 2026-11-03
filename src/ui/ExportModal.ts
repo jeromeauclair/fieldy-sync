@@ -1,4 +1,4 @@
-import { Modal, moment, Notice, Setting, TFile, type App } from 'obsidian';
+import { Modal, moment, Setting, TFile, type App } from 'obsidian';
 import { TASK_STATUSES, type FieldyTask } from '../api/types';
 import { EXPORT_FORMATS, renderExport, type ExportFormat, type ExportItem } from '../export/exportFormats';
 import type FieldySyncPlugin from '../main';
@@ -251,7 +251,7 @@ export class ExportModal extends Modal {
 			const count = `${exportItems.length} conversation${exportItems.length === 1 ? '' : 's'}`;
 			const leftOut = privateCount > 0 ? ` ${privateCount} private conversation${privateCount === 1 ? ' was' : 's were'} left out.` : '';
 			this.status(`Exported ${count} to ${file.path}.${leftOut}`);
-			new Notice(`Fieldy export saved: ${file.path}`);
+			this.plugin.notify(`Fieldy export saved: ${file.path}`);
 			if (file.extension === 'md') await this.app.workspace.getLeaf(true).openFile(file);
 		} catch (err) {
 			if (isCancellation(err)) return;

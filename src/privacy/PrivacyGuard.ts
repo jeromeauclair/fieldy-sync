@@ -1,5 +1,5 @@
 import type { FieldyConversation, FieldyMemoryTemplate, FieldyTranscriptSegment, ListTranscriptionsParams } from '../api/types';
-import type { FieldySyncSettings } from '../settings/settings';
+import { exceptionActive, type FieldySyncSettings, type PrivacyException } from '../settings/settings';
 import {
 	conversationMatches,
 	hasPrivacyRules,
@@ -117,6 +117,7 @@ export class PrivacyGuard {
 	 * times per redraw, and time rules check a conversation minute by minute.
 	 */
 	private verdicts = new WeakMap<FieldyConversation, { key: string; verdict: PrivacyVerdict }>();
+	private exceptionsFor: { list: readonly unknown[]; ids: ReadonlySet<string>; expires: number | null } | null = null;
 
 	constructor(private readonly deps: PrivacyGuardDeps) {}
 
@@ -125,6 +126,29 @@ export class PrivacyGuard {
 		const source = [s.privateKeywords, s.privateSpeakers, s.privatePlaces, s.privateTemplates, JSON.stringify(s.privateTimeRules), String(s.privacySearchTranscript)].join('\u0000');
 		if (this.rulesFor?.source !== source) this.rulesFor = { source, rules: privacyRules(s) };
 		return this.rulesFor.rules;
+	}
+
+	/** Conversations the user made "not private"; always public. */
+	private exceptions(): ReadonlySet<string> {
+		const list = this.deps.settings().privacyExceptions;
+		const now = (this.deps.now ?? Date.now)();
+		// Rebuilt when the list changes or a temporary exception has ended.
+		if (this.exceptionsFor?.list !== list || (this.exceptionsFor.expires !== null && now >= this.exceptionsFor.expires)) {
+			const active = list.filter((e) => exceptionActive(e, now));
+			const ends = active.filter((e) => e.until).map((e) => Date.parse(e.until ?? ''));
+			this.exceptionsFor = { list, ids: new Set(active.map((e) => e.id)), expires: ends.length > 0 ? Math.min(...ends) : null };
+		}
+		return this.exceptionsFor.ids;
+	}
+
+	isException(id: string): boolean {
+		return this.exceptions().has(id);
+	}
+
+	/** The exception in effect for a conversation, if any (to show until when). */
+	exceptionFor(id: string): PrivacyException | undefined {
+		if (!this.exceptions().has(id)) return undefined;
+		return this.deps.settings().privacyExceptions.find((e) => e.id === id);
 	}
 
 	/** Whether any privacy filter is set. */
@@ -161,8 +185,13 @@ export class PrivacyGuard {
 		if (this.rules().templates.length > 0 && this.templateTitles === null) await this.loadTemplates(signal);
 	}
 
-	/** What is known without any request. */
+	/** What is known without any request. An exception is always public. */
 	check(c: FieldyConversation): PrivacyVerdict {
+		return this.exceptions().has(c.id) ? PUBLIC : this.checkFilters(c);
+	}
+
+	/** What the filters alone say, ignoring exceptions (to show "private again" only where it means something). */
+	checkFilters(c: FieldyConversation): PrivacyVerdict {
 		const rules = this.rules();
 		if (!hasPrivacyRules(rules)) return PUBLIC;
 		const key = `${this.rulesFor?.source ?? ''}\u0001${this.templatesRevision}\u0001${this.deps.cache.revision}`;

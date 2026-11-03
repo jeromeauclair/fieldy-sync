@@ -143,6 +143,28 @@ export class FieldySettingsTab extends PluginSettingTab {
 		return lines.join('\n');
 	}
 
+	/** Conversations made "not private" by hand, from a private card or a note banner; deleting one makes it private again. */
+	private privacyExceptionsList(): SettingDefinitionList {
+		const list = () => this.plugin.settings.privacyExceptions;
+		return {
+			type: 'list',
+			heading: 'Not private (exceptions)',
+			visible: () => list().length > 0,
+			emptyState: 'None.',
+			onDelete: (index: number) => {
+				const exception = list()[index];
+				if (exception) void this.plugin.setPrivacyException(exception, false).then(() => this.update());
+			},
+			items: list().map(
+				(e): SettingDefinition => ({
+					name: e.title || 'Untitled conversation',
+					desc: `${e.startTime ? moment(e.startTime).format('YYYY-MM-DD HH:mm') + ' · ' : ''}${e.until ? `Not private until ${moment(e.until).format('YYYY-MM-DD HH:mm')}, then private again.` : 'Shown and synced although your filters match it.'} Delete to make it private again now.`,
+					searchable: false,
+				}),
+			),
+		};
+	}
+
 	/**
 	 * A time filter as a form: one rule per row (days, from, to), combined
 	 * from top to bottom with the operator chosen at the start of each row.
@@ -305,7 +327,8 @@ export class FieldySettingsTab extends PluginSettingTab {
 	private builtRuleCounts = '';
 
 	private ruleCounts(): string {
-		return `${this.plugin.settings.syncTimeRules.length}/${this.plugin.settings.privateTimeRules.length}`;
+		const s = this.plugin.settings;
+		return `${s.syncTimeRules.length}/${s.privateTimeRules.length}/${s.privacyExceptions.length}`;
 	}
 
 	override getSettingDefinitions(): SettingDefinitionItem[] {
@@ -364,10 +387,11 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Connection',
-				desc: 'Your Fieldy API key and connection check.',
+				desc: 'Your Fieldy API key, and a check that it works.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Fieldy API key',
 						items: [
 							{
 								name: 'API key',
@@ -429,10 +453,11 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Sync',
-				desc: 'What each sync looks at, and when it runs.',
+				desc: 'Which conversations each sync handles, at which times, and when it runs.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Which conversations',
 						items: [
 							{
 								name: 'Import new conversations during sync',
@@ -441,6 +466,14 @@ export class FieldySettingsTab extends PluginSettingTab {
 									['Off: sync only updates the notes you already have. Add new ones yourself with "Import conversations" or from the side panel.'],
 								),
 								control: { type: 'toggle', key: 'importNewOnSync' },
+							},
+							{
+								name: 'Re-create notes you deleted',
+								desc: help(
+									['Off (recommended): if you delete an imported note, sync respects that and does not bring it back.'],
+									['On: deleted notes are imported again by the next sync. Either way, you can re-import a single conversation from the import dialog or the side panel.'],
+								),
+								control: { type: 'toggle', key: 'recreateDeleted' },
 							},
 							{
 								name: 'Sync window',
@@ -465,10 +498,31 @@ export class FieldySettingsTab extends PluginSettingTab {
 								},
 							},
 							{
-								name: 'Include brief conversations',
+								name: 'Sync brief conversations',
 								desc: help(['Fieldy marks very short recordings as brief. Turn this off to skip them during sync; you can still import one by hand.']),
 								control: { type: 'toggle', key: 'includeBrief' },
 							},
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Sync times',
+						items: [
+							{
+								name: 'Only sync conversations recorded at',
+								aliases: ['hours', 'time', 'days', 'schedule', 'working hours'],
+								desc: help(
+									['Without rules, conversations recorded at any time are synced. With rules, sync only handles conversations that started at a matching time: the others get no note and their existing notes are not updated, as if outside the sync window. The import dialog and the side panel still show every conversation.'],
+									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
+								),
+							},
+						],
+					},
+					this.timeRulesList('syncTimeRules', 'Rules', 'No rule: any time.', () => ({ op: 'or', days: [1, 2, 3, 4, 5], from: '08:00', to: '18:00' })),
+					{
+						type: 'group',
+						heading: 'When sync runs',
+						items: [
 							{
 								name: 'Sync on startup',
 								desc: help(['Runs a sync about 10 seconds after Obsidian opens, so your notes are up to date when you start working. Does nothing if no API key is set.']),
@@ -483,42 +537,21 @@ export class FieldySettingsTab extends PluginSettingTab {
 								),
 								control: { type: 'dropdown', key: 'autoSyncMinutes', options: AUTO_SYNC_OPTIONS },
 							},
-							{
-								name: 'Re-create deleted notes',
-								desc: help(
-									['Off (recommended): if you delete an imported note, sync respects that and does not bring it back.'],
-									['On: deleted notes are imported again by the next sync. Either way, you can re-import a single conversation from the import dialog or the side panel.'],
-								),
-								control: { type: 'toggle', key: 'recreateDeleted' },
-							},
 						],
 					},
-					{
-						type: 'group',
-						items: [
-							{
-								name: 'Only sync conversations recorded at',
-								aliases: ['hours', 'time', 'days', 'schedule', 'working hours'],
-								desc: help(
-									['Without rules, conversations recorded at any time are synced. With rules, sync only handles conversations that started at a matching time: the others get no note and their existing notes are not updated, as if outside the sync window. The import dialog and the side panel still show every conversation.'],
-									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
-								),
-							},
-						],
-					},
-					this.timeRulesList('syncTimeRules', 'Rules', 'No rule: any time.', () => ({ op: 'or', days: [1, 2, 3, 4, 5], from: '08:00', to: '18:00' })),
 				],
 			},
 			{
 				type: 'page',
 				name: 'Folders and file names',
-				desc: 'Where new notes go and how they are named.',
+				desc: 'Where new notes go and how they are named. Existing notes never move.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Where new notes go',
 						items: [
 							{
-								name: 'Folder',
+								name: 'Folder for new notes',
 								desc: help(
 									['Where new conversation notes are created.'],
 									['Changing it only affects notes created from now on. Existing notes stay where they are and keep syncing, even if you move or rename them.'],
@@ -552,6 +585,12 @@ export class FieldySettingsTab extends PluginSettingTab {
 								control: { type: 'text', key: 'subfolderFormat', placeholder: 'YYYY/MM' },
 							},
 							this.livePreview('Folder preview', 'A conversation recorded today goes to:', () => this.folderPreview()),
+						],
+					},
+					{
+						type: 'group',
+						heading: 'File names',
+						items: [
 							{
 								name: 'File name pattern',
 								aliases: ['filename', 'naming'],
@@ -700,13 +739,13 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Tasks',
-				desc: 'Fieldy action items in your notes.',
+				desc: 'Fieldy action items as checkboxes in notes, and ticking them off in Fieldy.',
 				items: [
 					{
 						type: 'group',
 						items: [
 							{
-								name: 'Tasks',
+								name: 'Tasks in notes',
 								aliases: ['action items', 'to-do', 'todo'],
 								desc: help(['Action items from the conversation, as checkboxes. Ticking a box in Obsidian is safe: it never counts as an edit and is kept when the note updates.']),
 								control: { type: 'toggle', key: 'includeTasks' },
@@ -755,7 +794,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 						type: 'group',
 						items: [
 							{
-								name: 'Transcript',
+								name: 'Include the transcript',
 								aliases: ['include transcript'],
 								desc: help(['Adds the word-for-word transcript to notes. It needs one extra request per new or changed conversation; turn it off for shorter notes and faster syncs.']),
 								control: { type: 'toggle', key: 'includeTranscript' },
@@ -797,10 +836,11 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Properties, tags and dates',
-				desc: 'Note properties, tags, aliases and date formats.',
+				desc: 'The properties, tags, aliases and date formats of new and updated notes.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Dates',
 						items: [
 							{
 								name: 'Date format in notes',
@@ -816,6 +856,12 @@ export class FieldySettingsTab extends PluginSettingTab {
 								control: { type: 'dropdown', key: 'frontmatterDates', options: { local: 'Local time (2026-10-29T14:05:00)', iso: 'ISO 8601 from Fieldy (UTC)' } },
 							},
 							this.livePreview('Date preview', 'With the formats above, the current date and time looks like this:', () => this.datePreview(), true),
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Properties',
+						items: [
 							{
 								name: 'Speakers property',
 								desc: help(['Adds fieldy_speakers, the list of people in the conversation, to the note\'s properties. Useful for search, Bases and Dataview.']),
@@ -824,8 +870,14 @@ export class FieldySettingsTab extends PluginSettingTab {
 							{ name: 'Keywords property', desc: help(['Adds fieldy_keywords, the topics Fieldy detected.']), control: { type: 'toggle', key: 'fmKeywords' } },
 							{ name: 'Location property', desc: help(['Adds fieldy_location, the address where the conversation was recorded, when Fieldy knows it.']), control: { type: 'toggle', key: 'fmLocation' } },
 							{ name: 'Template property', desc: help(['Adds fieldy_template, the name of the Fieldy memory template used for the summary.']), control: { type: 'toggle', key: 'fmTemplate' } },
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Tags and aliases',
+						items: [
 							{
-								name: 'Tags',
+								name: 'Tags for new notes',
 								desc: help(['Tags added to every new note, separated by commas, without "#". They are only added when a note is created; after that, the note\'s tags are entirely yours.']),
 								control: { type: 'text', key: 'tags', placeholder: 'fieldy' },
 							},
@@ -846,7 +898,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'People',
-				desc: 'Link speakers to your people notes.',
+				desc: 'Speakers linked to your notes about people, and notes for new speakers.',
 				items: [
 					{
 						type: 'group',
@@ -895,10 +947,11 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Privacy',
-				desc: 'Keep some conversations out of your vault.',
+				desc: 'Keep conversations out of your vault by words, people, places, templates or times.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Filters',
 						items: [
 							{
 								name: 'How privacy filters work',
@@ -934,8 +987,31 @@ export class FieldySettingsTab extends PluginSettingTab {
 								desc: help(['Names of Fieldy memory templates (see the Account tab of the side panel). Every conversation summarised with one of them is private.']),
 								control: { type: 'textarea', key: 'privateTemplates', placeholder: 'Medical visit', rows: 2 },
 							},
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Private times',
+						items: [
+							{
+								name: 'How private times work',
+								aliases: ['privacy', 'hours', 'time', 'days', 'lunch'],
+								desc: help(
+									['A conversation is private when any moment of it matches these rules, for example a lunch break or the weekend.'],
+									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
+								),
+							},
+						],
+					},
+					this.timeRulesList('privateTimeRules', 'Rules', 'No rule: no conversation is private because of its time.', () => ({ op: 'or', days: [], from: '12:00', to: '13:00' })),
+					{
+						type: 'group',
+						heading: 'Options',
+						visible: () => this.plugin.privacy.active() || this.plugin.syncState.privateNotes().length > 0 || s().privacyExceptions.length > 0,
+						items: [
 							{
 								name: 'Also search transcripts',
+								visible: () => privacyRules(s()).keywords.length + privacyRules(s()).speakers.length > 0,
 								aliases: ['privacy', 'transcript'],
 								desc: help(
 									['Also looks for private keywords and speakers in what was said, not only in what Fieldy summarised. Off by default.'],
@@ -980,32 +1056,22 @@ export class FieldySettingsTab extends PluginSettingTab {
 									setting.addButton((button) => button.setButtonText('Review').onClick(() => new PrivateNotesModal(this.app, this.plugin).open()));
 								},
 							},
-							this.livePreview('Active filters', 'What the filters above currently catch:', () => this.privacyPreview(), true),
-						],
-					},
-					{
-						type: 'group',
-						items: [
 							{
-								name: 'Private times',
-								aliases: ['privacy', 'hours', 'time', 'days', 'lunch'],
-								desc: help(
-									['A conversation is private when any moment of it matches these rules, for example a lunch break or the weekend.'],
-									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
-								),
+								...this.livePreview('Active filters', 'What the filters above currently catch:', () => this.privacyPreview(), true),
 							},
 						],
 					},
-					this.timeRulesList('privateTimeRules', 'Rules', 'No rule: no conversation is private because of its time.', () => ({ op: 'or', days: [], from: '12:00', to: '13:00' })),
+					this.privacyExceptionsList(),
 				],
 			},
 			{
 				type: 'page',
 				name: 'Advanced',
-				desc: 'Requests, notifications and logging.',
+				desc: 'Request limits, retries, notifications and logging.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Requests to Fieldy',
 						items: [
 							{
 								name: 'Request timeout',
@@ -1027,6 +1093,12 @@ export class FieldySettingsTab extends PluginSettingTab {
 								]),
 								control: { type: 'slider', key: 'requestsPerMinute', min: 10, max: 95, step: 5, displayFormat: (v) => `${v}/min` },
 							},
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Notifications and logging',
+						items: [
 							{
 								name: 'Notifications for automatic syncs',
 								desc: help([
@@ -1051,10 +1123,11 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Edited notes and troubleshooting',
-				desc: 'Review edited notes, copy diagnostics or reset sync state.',
+				desc: 'Your edited notes, a report for bug reports, and a fresh start for the sync index.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Edited notes',
 						items: [
 							{
 								name: 'Edited notes',
@@ -1068,6 +1141,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 							},
 							{
 								name: 'Keep the transcript in your edited copy',
+								visible: () => s().includeTranscript,
 								aliases: ['keep my edits', 'restore', 'transcript'],
 								desc: help(
 									['When you restore the Fieldy version and keep your edits, your edited version is copied below the Fieldy section. Turn this off to leave its Transcript section out of that copy: the restored Fieldy section above already has the transcript.'],
@@ -1075,6 +1149,12 @@ export class FieldySettingsTab extends PluginSettingTab {
 								),
 								control: { type: 'toggle', key: 'keepTranscriptInEditedCopy' },
 							},
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Troubleshooting',
+						items: [
 							{
 								name: 'Diagnostics',
 								desc: help(['Copies the plugin version, your settings and sync counts, ready to paste into a bug report. Contains no API key, no note content and no conversation titles.']),

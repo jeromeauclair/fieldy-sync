@@ -8,7 +8,6 @@ import {
 	MarkdownView,
 	Menu,
 	moment,
-	Notice,
 	parseYaml,
 	setIcon,
 	setTooltip,
@@ -16,6 +15,7 @@ import {
 } from 'obsidian';
 import { ID_KEY, SYNCED_KEY } from '../markdown/ConversationRenderer';
 import type FieldySyncPlugin from '../main';
+import { TEMPORARY_EXCEPTION_MS } from '../settings/settings';
 import { isSyncPaused } from '../sync/SyncEngine';
 import { describeError, isCancellation } from '../utils/errors';
 import { BANNER_HINTS, BANNER_LABELS, blockLayout, blockStatus, type BannerStatus, type BlockLayout } from './bannerModel';
@@ -152,6 +152,14 @@ function renderBanner(plugin: FieldySyncPlugin, model: BannerModel, position: 'b
 	button('panel-right', 'Show in the Fieldy panel', () => void plugin.showFieldyVersion(model.id));
 	if (model.status === 'synced') button('refresh-cw', 'Refresh from Fieldy', () => void plugin.refreshNote(model.id));
 	if (model.status === 'edited') button('rotate-ccw', 'Restore the Fieldy version…', (evt) => restoreMenu(plugin, model, evt));
+	if (model.status === 'private') {
+		const unlock = (forMs?: number) => {
+			const record = plugin.syncState.get(model.id);
+			void plugin.setPrivacyException({ id: model.id, title: record?.title ?? null, startTime: record?.startTime ?? '' }, true, forMs);
+		};
+		button('timer', 'Not private for 2 hours, then private again', () => unlock(TEMPORARY_EXCEPTION_MS));
+		button('lock-open', 'Not private: sync this note again (an exception to your filters)', () => unlock());
+	}
 	return el;
 }
 
@@ -166,9 +174,9 @@ function restoreMenu(plugin: FieldySyncPlugin, model: BannerModel, evt: MouseEve
 	const restore = async (choice: 'keep-both' | 'overwrite') => {
 		try {
 			await plugin.restoreFieldyVersion(model.id, choice);
-			new Notice(choice === 'keep-both' ? 'Fieldy version restored; your edits are kept below it.' : 'Fieldy version restored.');
+			plugin.notify(choice === 'keep-both' ? 'Fieldy version restored; your edits are kept below it.' : 'Fieldy version restored.');
 		} catch (err) {
-			if (!isCancellation(err)) new Notice(describeError(err));
+			if (!isCancellation(err)) plugin.notify(describeError(err), 'error');
 		}
 	};
 	const menu = new Menu();

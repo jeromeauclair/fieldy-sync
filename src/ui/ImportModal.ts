@@ -1,4 +1,4 @@
-import { Modal, moment, Notice, Setting, type App } from 'obsidian';
+import { Modal, moment, Setting, type App } from 'obsidian';
 import type { FieldyConversation } from '../api/types';
 import { displayTitle } from '../markdown/ConversationRenderer';
 import { describeMatches } from '../privacy/privacy';
@@ -291,12 +291,12 @@ export class ImportModal extends Modal {
 		const conversations = this.rows.filter((r) => this.selected.has(r.conversation.id) && !blocked(r)).map((r) => r.conversation);
 		if (conversations.length === 0) return;
 		if (this.plugin.engine.isRunning) {
-			new Notice('A Fieldy sync is already running. Try again when it finishes.');
+			this.plugin.notify('A Fieldy sync is already running. Try again when it finishes.');
 			return;
 		}
 		const folder = sanitizeFolderPath(this.folder) || this.plugin.settings.folder;
 		this.close();
-		new Notice(`Importing ${conversations.length} Fieldy conversation${conversations.length === 1 ? '' : 's'}… Progress is shown in the status bar.`);
+		this.plugin.notify(`Importing ${conversations.length} Fieldy conversation${conversations.length === 1 ? '' : 's'}… Progress is shown in the status bar.`);
 		void this.plugin.runSync('import', {
 			conversations,
 			onlyIds: new Set(conversations.map((c) => c.id)),

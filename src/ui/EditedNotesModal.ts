@@ -1,4 +1,4 @@
-import { ConfirmationModal, Menu, Modal, moment, Notice, setIcon, setTooltip, type App } from 'obsidian';
+import { ConfirmationModal, Menu, Modal, moment, setIcon, setTooltip, type App } from 'obsidian';
 import type { RestoreChoice } from '../sync/SyncEngine';
 import type { SyncRecord } from '../sync/SyncState';
 import { describeError } from '../utils/errors';
@@ -232,7 +232,7 @@ export class EditedNotesModal extends Modal {
 	private async restore(ids: string[], choice: RestoreChoice): Promise<void> {
 		this.busy = true;
 		this.renderList();
-		const progress = ids.length > 1 ? new Notice(`Restoring 0 of ${ids.length}…`, 0) : null;
+		const progress = ids.length > 1 ? this.plugin.notify(`Restoring 0 of ${ids.length}…`, 'info', 0) : null;
 		let done = 0;
 		const failures: string[] = [];
 		for (const id of ids) {
@@ -243,12 +243,12 @@ export class EditedNotesModal extends Modal {
 			} catch (err) {
 				failures.push(describeError(err));
 			}
-			progress?.setMessage(`Restoring ${done + failures.length} of ${ids.length}…`);
+			progress?.setText(`Restoring ${done + failures.length} of ${ids.length}…`);
 		}
 		progress?.hide();
 		const kept = choice === 'keep-both' ? '; your edits are kept below it' : '';
-		if (failures.length === 0) new Notice(ids.length === 1 ? `Fieldy version restored${kept}.` : `${done} notes restored${kept ? '; your edits are kept below the Fieldy version' : ''}.`);
-		else new Notice(`${done} restored, ${failures.length} failed (first: ${failures[0]}).`, 10_000);
+		if (failures.length === 0) this.plugin.notify(ids.length === 1 ? `Fieldy version restored${kept}.` : `${done} notes restored${kept ? '; your edits are kept below the Fieldy version' : ''}.`);
+		else this.plugin.notify(`${done} restored, ${failures.length} failed (first: ${failures[0]}).`, 'error', 10_000);
 		this.busy = false;
 		this.render();
 	}

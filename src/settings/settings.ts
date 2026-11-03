@@ -11,6 +11,23 @@ type FrontmatterDateStyle = 'local' | 'iso';
 export type NoticeLevel = 'all' | 'changes' | 'errors';
 type RecordingSourceFilter = 'all' | RecordingSource;
 
+/** One conversation made "not private" by hand; the title and date are kept to list it. */
+export interface PrivacyException {
+	id: string;
+	title: string;
+	startTime: string;
+	/** ISO time a temporary exception ends ("not private for 2 hours"); absent = until removed. */
+	until?: string;
+}
+
+/** How long "Not private for a while" lasts. */
+export const TEMPORARY_EXCEPTION_MS = 2 * 60 * 60 * 1000;
+
+/** Whether an exception is still in effect. */
+export function exceptionActive(e: PrivacyException, nowMs: number): boolean {
+	return !e.until || Date.parse(e.until) > nowMs;
+}
+
 export interface FieldySyncSettings {
 	// Fieldy connection
 	/** Id of the secret in Obsidian's secret storage. Never the key itself. */
@@ -96,6 +113,8 @@ export interface FieldySyncSettings {
 	privateTemplates: string;
 	/** A conversation with any moment matching these rules is private. */
 	privateTimeRules: TimeRule[];
+	/** Conversations kept public although a privacy filter matches them (the user's exceptions). */
+	privacyExceptions: PrivacyException[];
 	/** Also look for private keywords and speakers in transcripts (one request per conversation, once). */
 	privacySearchTranscript: boolean;
 	/** Move the notes of conversations that became private to the trash (instead of keeping them, frozen). */
@@ -110,6 +129,8 @@ export interface FieldySyncSettings {
 	notices: NoticeLevel;
 	showStatusBar: boolean;
 	debugLogging: boolean;
+	/** Side panel: filter changes wait for "Apply" instead of applying after a short pause. */
+	panelApplyFiltersManually: boolean;
 	/** The one-time "not tested on mobile yet" notice was shown on this vault. */
 	mobileNoticeShown: boolean;
 }
@@ -182,6 +203,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	privatePlaces: '',
 	privateTemplates: '',
 	privateTimeRules: [],
+	privacyExceptions: [],
 	privacySearchTranscript: false,
 	deletePrivateNotes: false,
 	showPrivateTitles: false,
@@ -192,6 +214,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	notices: 'changes',
 	showStatusBar: true,
 	debugLogging: false,
+	panelApplyFiltersManually: false,
 	mobileNoticeShown: false,
 };
 
@@ -259,6 +282,26 @@ function hex(value: unknown, fallback: string): string {
 
 function text(value: unknown, fallback: string, maxLength = 200): string {
 	return typeof value === 'string' ? value.slice(0, maxLength) : fallback;
+}
+
+function sanitizeExceptions(raw: unknown): PrivacyException[] {
+	if (!Array.isArray(raw)) return [];
+	const seen = new Set<string>();
+	const out: PrivacyException[] = [];
+	for (const item of raw.slice(0, 2000)) {
+		if (typeof item !== 'object' || item === null) continue;
+		const e = item as Record<string, unknown>;
+		if (typeof e.id !== 'string' || !e.id || seen.has(e.id)) continue;
+		seen.add(e.id);
+		const until = typeof e.until === 'string' && !Number.isNaN(Date.parse(e.until)) ? e.until : undefined;
+		out.push({
+			id: e.id.slice(0, 200),
+			title: typeof e.title === 'string' ? e.title.slice(0, 300) : '',
+			startTime: typeof e.startTime === 'string' ? e.startTime.slice(0, 40) : '',
+			...(until ? { until } : {}),
+		});
+	}
+	return out;
 }
 
 /**
@@ -332,6 +375,7 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		privatePlaces: text(s.privatePlaces, d.privatePlaces, 5000),
 		privateTemplates: text(s.privateTemplates, d.privateTemplates, 5000),
 		privateTimeRules: sanitizeTimeRules(s.privateTimeRules),
+		privacyExceptions: sanitizeExceptions(s.privacyExceptions),
 		privacySearchTranscript: bool(s.privacySearchTranscript, d.privacySearchTranscript),
 		deletePrivateNotes: bool(s.deletePrivateNotes, d.deletePrivateNotes),
 		showPrivateTitles: bool(s.showPrivateTitles, d.showPrivateTitles),
@@ -342,6 +386,7 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		notices: pick(s.notices, ['all', 'changes', 'errors'] as const, d.notices),
 		showStatusBar: bool(s.showStatusBar, d.showStatusBar),
 		debugLogging: bool(s.debugLogging, d.debugLogging),
+		panelApplyFiltersManually: bool(s.panelApplyFiltersManually, d.panelApplyFiltersManually),
 		mobileNoticeShown: bool(s.mobileNoticeShown, d.mobileNoticeShown),
 	};
 }
