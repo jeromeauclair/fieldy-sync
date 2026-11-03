@@ -8,9 +8,9 @@ if you want to view the source, please visit the github repository of this plugi
 https://github.com/jeromeauclair/fieldy-sync
 
 Fieldy Sync
-Copyright (C) 2026 jeromeauclair
-Licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).
-This program comes with ABSOLUTELY NO WARRANTY; see the LICENSE file for details.
+Copyright 2026 Jérôme Auclair
+Licensed under the Functional Source License, Version 1.1, MIT Future License (FSL-1.1-MIT).
+Provided "as is", without warranty of any kind; see the LICENSE file for the full terms.
 */
 `;
 

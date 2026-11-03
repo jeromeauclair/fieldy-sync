@@ -120,11 +120,11 @@ docs/reference.md    settings, commands, sync behaviour, troubleshooting
 
 ## License
 
-Copyright (C) 2026 jeromeauclair
+Copyright 2026 Jérôme Auclair
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Fieldy Sync is released under the [Functional Source License, Version 1.1, MIT Future License](LICENSE) (FSL-1.1-MIT). You may use, copy, change and share it for any purpose except a competing commercial product or service, that is, one that offers the same or similar functionality. Personal use, use at work, education and research are all allowed. Two years after each version is released, that version also becomes available under the MIT license.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the [GNU General Public License](LICENSE) for more details.
+The software is provided "as is", without warranty of any kind. See the [license](LICENSE) for the full terms.
 
 The icons in the documentation are from [Lucide](https://lucide.dev), the icon set Obsidian uses, under the ISC License.
 
