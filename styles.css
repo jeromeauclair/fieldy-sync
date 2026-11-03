@@ -1120,11 +1120,37 @@
 	--icon-size: var(--icon-xs);
 }
 
-/* Time filter rules: one row per rule (operator, days, from, to). */
-.fieldy-time-rule .setting-item-control {
+/* Time filter rules: the rule in words on its own line, the controls on the line below,
+   so the text changing length never moves the controls. */
+.fieldy-time-rule {
 	flex-wrap: wrap;
+	row-gap: var(--size-4-2);
+}
+
+.fieldy-time-rule .setting-item-info {
+	flex: 1 0 100%;
+	margin-inline-end: 0;
+}
+
+.fieldy-time-rule .setting-item-control {
+	flex: 1 0 100%;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: var(--size-2-2);
 }
+
+.fieldy-time-op {
+	width: 6.5em;
+}
+
+.fieldy-time-op-first {
+	display: inline-flex;
+	align-items: center;
+	padding-inline-start: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
 
 .fieldy-time-days {
 	display: inline-flex;
@@ -1142,6 +1168,22 @@
 	color: var(--text-on-accent);
 }
 
-.fieldy-time-input {
-	width: 7em;
+.fieldy-clock {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+}
+
+.fieldy-clock-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin-right: var(--size-2-1);
+}
+
+.fieldy-clock .dropdown {
+	padding-right: var(--size-4-6);
+}
+
+.fieldy-clock-minutes:disabled {
+	opacity: 0.5;
 }

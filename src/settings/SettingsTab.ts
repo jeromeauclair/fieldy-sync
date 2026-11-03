@@ -184,12 +184,16 @@ export class FieldySettingsTab extends PluginSettingTab {
 		const rule = current();
 		if (!rule) return;
 		if (index > 0) {
-			setting.addDropdown((dropdown) =>
+			setting.addDropdown((dropdown) => {
+				dropdown.selectEl.addClass('fieldy-time-op');
 				dropdown
 					.addOptions(TIME_RULE_OPS)
 					.setValue(rule.op)
-					.onChange((value) => void change({ op: value as TimeRuleOp })),
-			);
+					.onChange((value) => void change({ op: value as TimeRuleOp }));
+			});
+		} else {
+			// Same width as the operator choice of the rows below, so every row's controls line up.
+			setting.controlEl.createSpan({ cls: 'fieldy-time-op fieldy-time-op-first', text: 'when' });
 		}
 		const days = setting.controlEl.createDiv({ cls: 'fieldy-time-days' });
 		for (const day of WEEK_ORDER) {
@@ -209,14 +213,41 @@ export class FieldySettingsTab extends PluginSettingTab {
 			['from', 'From'],
 			['to', 'To'],
 		] as const) {
-			setting.addText((text) => {
-				text.inputEl.type = 'time';
-				text.inputEl.addClass('fieldy-time-input');
-				text.inputEl.setAttribute('aria-label', `${label} (empty: ${field === 'from' ? 'from midnight' : 'until midnight'})`);
-				setTooltip(text.inputEl, `${label}; leave both empty for the whole day. A range ending earlier runs past midnight.`);
-				text.setValue(rule[field]).onChange((value) => void change({ [field]: value }));
-			});
+			this.renderClock(setting.controlEl, label, rule[field], field === 'from' ? 'from midnight' : 'until midnight', (value) => void change({ [field]: value }));
 		}
+	}
+
+	/**
+	 * A 24-hour time as two dropdowns, hours and minutes (5-minute steps), so
+	 * it never shows AM/PM whatever the system language. "--" leaves it empty.
+	 */
+	private renderClock(parent: HTMLElement, label: string, value: string, emptyMeaning: string, onChange: (value: string) => void): void {
+		const wrap = parent.createSpan({ cls: 'fieldy-clock' });
+		wrap.createSpan({ cls: 'fieldy-clock-label', text: label });
+		const [hour = '', minute = '00'] = value ? value.split(':') : [];
+		const hours = wrap.createEl('select', { cls: 'dropdown fieldy-clock-hours', attr: { 'aria-label': `${label}, hour (-- for ${emptyMeaning})` } });
+		hours.createEl('option', { value: '', text: '--' });
+		for (let h = 0; h < 24; h++) {
+			const text = String(h).padStart(2, '0');
+			hours.createEl('option', { value: text, text });
+		}
+		hours.value = hour;
+		wrap.createSpan({ cls: 'fieldy-clock-sep', text: ':' });
+		const minutes = wrap.createEl('select', { cls: 'dropdown fieldy-clock-minutes', attr: { 'aria-label': `${label}, minutes` } });
+		const steps = new Set<string>();
+		for (let m = 0; m < 60; m += 5) steps.add(String(m).padStart(2, '0'));
+		// A value saved with other minutes (by hand, or another device) stays as it is.
+		steps.add(minute);
+		for (const text of [...steps].sort()) minutes.createEl('option', { value: text, text });
+		minutes.value = minute;
+		minutes.disabled = hour === '';
+		setTooltip(wrap, `${label}: leave the hour on -- for ${emptyMeaning}; both on -- for the whole day. A range ending earlier runs past midnight.`);
+		const emit = () => {
+			minutes.disabled = hours.value === '';
+			onChange(hours.value === '' ? '' : `${hours.value}:${minutes.value}`);
+		};
+		hours.addEventListener('change', emit);
+		minutes.addEventListener('change', emit);
 	}
 
 	private folderPreview(): string {
@@ -470,7 +501,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 								aliases: ['hours', 'time', 'days', 'schedule', 'working hours'],
 								desc: help(
 									['Without rules, conversations recorded at any time are synced. With rules, sync only handles conversations that started at a matching time: the others get no note and their existing notes are not updated, as if outside the sync window. The import dialog and the side panel still show every conversation.'],
-									['One rule per row: pick days (none for every day) and a time range (both empty for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: or adds times, and keeps only times matching both, except removes times. Local time.'],
+									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
 								),
 							},
 						],
@@ -907,7 +938,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 								aliases: ['privacy', 'hours', 'time', 'days', 'lunch'],
 								desc: help(
 									['A conversation is private when any moment of it matches these rules, for example a lunch break or the weekend.'],
-									['One rule per row: pick days (none for every day) and a time range (both empty for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: or adds times, and keeps only times matching both, except removes times. Local time.'],
+									['One rule per row: pick days (none for every day) and a time range in 24-hour local time (hours on -- for the whole day; a range ending earlier runs past midnight). Rows combine from top to bottom: "or" adds times, "and" keeps only times matching both, "except" removes times.'],
 								),
 							},
 						],

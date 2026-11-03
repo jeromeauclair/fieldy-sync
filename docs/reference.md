@@ -244,7 +244,7 @@ One entry per line (or separated by commas). Case and accents are ignored. See [
 **Only sync conversations recorded at** (Sync) and **Private times** (Privacy) are small forms: one rule per row, added with **+** and removed with the row's delete button. Each row has:
 
 - **Days:** the seven day buttons, Monday first. None selected means every day.
-- **From** and **To:** a time range in your local time. Both empty means the whole day; only one means from or until midnight. A range ending earlier than it starts runs past midnight: *Fri 22:00–02:00* covers Friday night into Saturday.
+- **From** and **To:** a time range in 24-hour local time, as an hour and a minute (5-minute steps). Both hours on `--` means the whole day; only one means from or until midnight. A range ending earlier than it starts runs past midnight: *Fri 22:00–02:00* covers Friday night into Saturday.
 - **Logic** (from the second row): how the row combines with the rows above it, from top to bottom. **or** adds its times, **and** keeps only times matching both, **except** removes its times.
 
 Each row's name shows how it is read, for example:
