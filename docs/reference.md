@@ -137,7 +137,7 @@ Nothing, unless you ask:
 - **Tasks tab:** ticking, reopening, editing the title or due date, and cancelling a task are sent to Fieldy when you click.
 - **Share link switch** on an expanded card: creates the conversation's share link, or turns it on or off, when you click.
 - **Mark ticked tasks as completed in Fieldy** (off by default): a task you tick in a note is marked completed in Fieldy on the next sync.
-- **Create a share link for new notes** (on by default): when a note is created, the conversation gets a Fieldy share link if it has none. Share links are public: anyone with the URL can read what they share. A link you turned off in Fieldy stays off.
+- **Create a share link for new notes** (off by default): when a note is created, the conversation gets a Fieldy share link if it has none. Share links are public: anyone with the URL can read what they share. A link you turned off in Fieldy stays off.
 
 It never deletes tasks or share links, and never edits conversations, speakers or templates.
 
@@ -184,7 +184,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Quotes | On | Notable quotes with their context. |
 | Use Fieldy share links | On | Off: the plugin never lists, checks, creates or changes share links, and shows none (local first). The share link settings below and the card switch disappear. |
 | List share links in notes | Off | Adds a "Share links" section with the conversation's links to its note (one extra request per updated note). |
-| Create a share link for new notes | On | Creates the conversation's public Fieldy share link, if it has none, when sync or an import creates its note. One or two requests per new note. Private conversations never get one. |
+| Create a share link for new notes | Off | Creates the conversation's public Fieldy share link, if it has none, when sync or an import creates its note. One or two requests per new note. Private conversations never get one. |
 | Author name on share links | (none) | Required by Fieldy and shown on every link the plugin creates (for new notes or with a card's switch). Filled in from a share link made in the Fieldy app once the plugin sees one. Empty: the name of your Fieldy account's email (before the @) is used, and appears publicly on new links. |
 | Share the transcript | On | Links the plugin creates also share the transcript. Off: the title, date, summary, quotes and keywords only. |
 | Section banner | On | Shows the section's markers as [banners](guide.md#note-banners) in Live Preview and reading view. Display only. |
@@ -334,7 +334,7 @@ The panel stays light on long histories: it draws 100 cards at a time, checks sh
 
 **Can I rename or move notes?** Yes. Notes are tracked by `fieldy_id`, not by path.
 
-**Does the plugin create anything in Fieldy?** Only share links: one per new note, if the conversation has none, while **Create a share link for new notes** is on (the default), or when you use the share link switch on a card. Turn it off on the Note content page.
+**Does the plugin create anything in Fieldy?** Only share links: one per new note, if the conversation has none, while **Create a share link for new notes** is on (off by default, on the Note content page), or when you use the share link switch on a card.
 
 **Does the plugin delete anything?** Not unless you ask. It deletes notes only if you turn on **Move notes of private conversations to the trash** (off by default), and then only to the trash. It never deletes or edits anything in Fieldy except the task changes you make yourself (see [What the plugin changes in Fieldy](#what-the-plugin-changes-in-fieldy)).
 

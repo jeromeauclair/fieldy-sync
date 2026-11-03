@@ -66,7 +66,7 @@ Then open the panel with the <img src="https://raw.githubusercontent.com/jeromea
 - **Dashboards.** `show: conversations`, `tasks` or `stats` in a `fieldy` block, by period, speaker or kind, plus Dataview queries. → [Dashboards](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#dashboards-fieldy-blocks)
 - **Your edits.** Edit inside the section and the note is kept as you wrote it; restore the Fieldy version whenever you like, keeping your edits below it or not. → [Edited notes](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#edited-notes)
 - **Privacy.** Conversations matching your filters (keywords, speakers, places, templates, times) get no note, and the panel shows only that they exist. → [Privacy filters](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#privacy-filters)
-- **Changes in Fieldy.** The plugin only reads from Fieldy, except the task changes you click in the Tasks tab, the optional "Mark ticked tasks as completed in Fieldy", the share link switch on a card, and a share link for each new note (on by default; share links are public). → [What the plugin changes in Fieldy](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md#what-the-plugin-changes-in-fieldy)
+- **Changes in Fieldy.** The plugin only reads from Fieldy, except the task changes you click in the Tasks tab, the optional "Mark ticked tasks as completed in Fieldy", the share link switch on a card, and, if you turn it on, a share link for each new note (share links are public). → [What the plugin changes in Fieldy](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md#what-the-plugin-changes-in-fieldy)
 
 ## Privacy and security
 

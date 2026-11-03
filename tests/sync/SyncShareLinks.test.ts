@@ -14,7 +14,7 @@ function setup(overrides: Partial<FieldySyncSettings> = {}, fallback?: () => Pro
 	const api = new FakeFieldyApi();
 	const store = new MemoryNoteStore();
 	const state = new SyncState(emptySyncState(), async () => undefined);
-	const settings = testSettings({ shareLinkAuthor: 'Alex Martin', ...overrides });
+	const settings = testSettings({ shareLinkAuthor: 'Alex Martin', createShareLinks: true, ...overrides });
 	const authors: string[] = [];
 	const privacy = new PrivacyGuard({ settings: () => settings, client: api, cache: new TranscriptCheckCache(), now: () => NOW });
 	const engine = new SyncEngine({ client: api, store, state, settings: () => settings, formatDate: formatUtc, now: () => NOW, privacy, onShareAuthor: (n) => authors.push(n), shareAuthorFallback: fallback });

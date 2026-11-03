@@ -18,7 +18,7 @@ First release, licensed under the Functional Source License (FSL-1.1-MIT). Requi
 - Subfolders by year, month, year/month, ISO week, day, or a custom Moment format.
 - Optional speaker links: speaker names matching a people note's name or alias become links in the note, its `fieldy_speakers` property and, optionally, the transcript. Creating a people note later updates the conversation notes that mention that person. Optionally, sync creates a people note for speakers who have none.
 - **Use Fieldy share links** (on by default): off, the plugin never lists, checks, creates or changes share links and shows none.
-- A Fieldy share link for every new note, if the conversation has none (on by default; the author name is copied from a link made in the Fieldy app, or else the account email's name; transcript included unless turned off). A failure never blocks the note.
+- A Fieldy share link for every new note, if the conversation has none (off by default; the author name is copied from a link made in the Fieldy app, or else the account email's name; transcript included unless turned off). A failure never blocks the note.
 - Tasks as checkboxes; ticking is never an edit. Optional, off by default: ticked tasks are marked completed in Fieldy. Optional `[due:: …]` due dates for Dataview.
 
 ### Side panel

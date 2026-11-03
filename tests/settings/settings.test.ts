@@ -8,6 +8,11 @@ describe('sanitizeSettings', () => {
 		expect(sanitizeSettings('nonsense')).toEqual(DEFAULT_SETTINGS);
 	});
 
+	it('changes nothing in Fieldy by default (no share links, no task updates)', () => {
+		expect(DEFAULT_SETTINGS.createShareLinks).toBe(false);
+		expect(DEFAULT_SETTINGS.pushTaskCompletion).toBe(false);
+	});
+
 	it('clamps numbers and rejects unknown enum values', () => {
 		const s = sanitizeSettings({
 			syncWindowDays: -5,

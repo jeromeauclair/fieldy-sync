@@ -166,7 +166,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	includeTranscript: true,
 	includeShareLinks: false,
 	useShareLinks: true,
-	createShareLinks: true,
+	createShareLinks: false,
 	shareLinkAuthor: '',
 	shareLinkTranscript: true,
 	showNoteBanner: true,
