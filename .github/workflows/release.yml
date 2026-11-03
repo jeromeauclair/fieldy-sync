@@ -31,9 +31,17 @@ jobs:
             echo "Tag $tag does not match manifest.json version $version" >&2
             exit 1
           fi
+      - name: Release notes from this version's changelog section
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          awk -v heading="## $tag" '$0 == heading { found = 1; next } found && /^## / { exit } found { print }' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "CHANGELOG.md has no \"## $tag\" section" >&2
+            exit 1
+          fi
       - name: Create draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          gh release create "$tag" --title "$tag" --draft --notes-file CHANGELOG.md main.js manifest.json styles.css
+          gh release create "$tag" --title "$tag" --draft --notes-file release-notes.md main.js manifest.json styles.css

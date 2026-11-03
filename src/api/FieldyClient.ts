@@ -9,6 +9,7 @@ import {
 	FIELDY_API_BASE_URL,
 	type FieldyConversation,
 	type FieldyMemoryTemplate,
+	type CreateSharableParams,
 	type FieldySharable,
 	type FieldySpeakerProfile,
 	type TaskChanges,
@@ -280,6 +281,44 @@ export class FieldyClient {
 	/** Existing share links for a conversation (read-only). */
 	listSharables(conversationId: string, options: RequestOptions = {}): Promise<FieldySharable[]> {
 		return this.listAll('/sharables', { conversationId }, (json) => parsePage(json, parseSharable, 'sharables'), options);
+	}
+
+	/**
+	 * `POST /sharables`: creates the conversation's public share link (anyone
+	 * with the URL can read the shared fields). Fieldy keeps one link per
+	 * conversation, so a retried request does not create a second one.
+	 */
+	createSharable(params: CreateSharableParams, options: RequestOptions = {}): Promise<FieldySharable> {
+		return this.request(
+			{
+				method: 'POST',
+				path: '/sharables',
+				body: { authorName: params.authorName, sharedFields: [...params.sharedFields], targetDocId: params.conversationId },
+				parse: (json) => {
+					const created = typeof json === 'object' && json !== null ? parseSharable({ ...json, enabled: true, authorName: params.authorName, sharedFields: params.sharedFields }) : null;
+					if (!created) throw malformed('share link creation returned no link');
+					return created;
+				},
+			},
+			options,
+		);
+	}
+
+	/** `PATCH /sharables/{id}`: turns a share link on or off. */
+	setSharableEnabled(id: string, enabled: boolean, options: RequestOptions = {}): Promise<FieldySharable> {
+		return this.request(
+			{
+				method: 'PATCH',
+				path: `/sharables/${encodeURIComponent(id)}`,
+				body: { enabled },
+				parse: (json) => {
+					const link = parseSharable(json);
+					if (!link) throw malformed('share link update returned no link');
+					return link;
+				},
+			},
+			options,
+		);
 	}
 
 	/**

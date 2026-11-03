@@ -9,7 +9,7 @@ import { connectionLabel, nextConnectionState, type ConnectionState } from './co
 import { buildDiagnostics } from './diagnostics';
 import { ID_KEY } from './markdown/ConversationRenderer';
 import { PrivacyGuard, sanitizeTranscriptChecks, TranscriptCheckCache, type TranscriptCheck } from './privacy/PrivacyGuard';
-import { ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
+import { emailName, ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
 import { FieldySettingsTab } from './settings/SettingsTab';
 import { ObsidianNoteStore } from './sync/ObsidianNoteStore';
 import type { NoteRef } from './sync/NoteStore';
@@ -38,14 +38,6 @@ interface PluginData {
 
 export type LocalStatus = 'imported' | 'deleted' | 'edited' | 'paused';
 
-/**
- * Events on `plugin.events`:
- * - `connection-changed` (state: ConnectionState)
- * - `sync-started`
- * - `sync-finished` (summary: SyncRunSummary | null)
- * - `settings-changed`
- */
-export type FieldyEvent = 'connection-changed' | 'sync-started' | 'sync-finished' | 'settings-changed';
 
 const STARTUP_DELAY_MS = 10_000;
 const PERSIST_DELAY_MS = 500;
@@ -57,6 +49,10 @@ export default class FieldySyncPlugin extends Plugin {
 	client!: FieldyClient;
 	engine!: SyncEngine;
 	privacy!: PrivacyGuard;
+	/**
+	 * `connection-changed` (state: ConnectionState), `sync-started`,
+	 * `sync-finished` (summary: SyncRunSummary | null) and `settings-changed`.
+	 */
 	readonly events = new Events();
 	connection: ConnectionState = { status: 'unknown' };
 
@@ -96,6 +92,8 @@ export default class FieldySyncPlugin extends Plugin {
 			formatDate: (iso, format) => moment(iso).format(format),
 			logger: this.logger,
 			privacy: this.privacy,
+			onShareAuthor: (name) => this.rememberShareAuthor(name),
+			shareAuthorFallback: () => this.accountName(),
 		});
 		if (!this.hasApiKey()) this.connection = { status: 'not-configured' };
 
@@ -404,6 +402,34 @@ export default class FieldySyncPlugin extends Plugin {
 		}
 	}
 
+	/**
+	 * Prefills "Author name on share links" with the name on a share link
+	 * seen in Fieldy (made in the Fieldy app), until the user sets one.
+	 */
+	rememberShareAuthor(name: string): void {
+		const trimmed = name.trim();
+		if (trimmed && !this.settings.shareLinkAuthor) void this.updateSetting('shareLinkAuthor', trimmed);
+	}
+
+	/**
+	 * Author name for share links: the setting (typed, or copied from a
+	 * Fieldy app link), else the Fieldy account's email name (before the @).
+	 */
+	async shareLinkAuthor(): Promise<string | null> {
+		return this.settings.shareLinkAuthor.trim() || (await this.accountName());
+	}
+
+	/** The Fieldy account's email name, from the last connection check or one request. */
+	private async accountName(): Promise<string | null> {
+		let email = this.connection.email;
+		if (!email) {
+			const user = await this.client.getCurrentUser();
+			email = user.email;
+			this.setConnection(nextConnectionState(this.connection, { ok: true, email }, new Date().toISOString()));
+		}
+		return emailName(email);
+	}
+
 	/** Paths of notes linked to Fieldy conversations (first note per id). */
 	async noteIndex(): Promise<Map<string, string>> {
 		return this.pathsFrom(await new ObsidianNoteStore(this.app).indexByFieldyId());
@@ -482,6 +508,10 @@ export default class FieldySyncPlugin extends Plugin {
 
 	/** The conversation's first active share link; null (after a notice) when it has none or the lookup fails. */
 	async shareLinkUrl(id: string): Promise<string | null> {
+		if (!this.settings.useShareLinks) {
+			new Notice('Share links are turned off in the plugin settings (note content page).');
+			return null;
+		}
 		try {
 			const links = (await this.client.listSharables(id)).filter((s) => s.enabled);
 			this.reportRequestOutcome();
@@ -590,7 +620,7 @@ export default class FieldySyncPlugin extends Plugin {
 			id: 'copy-share-link',
 			name: 'Copy share link of current note',
 			checkCallback: (checking) => {
-				const active = this.activeFieldyId();
+				const active = this.settings.useShareLinks ? this.activeFieldyId() : null;
 				if (!active) return false;
 				if (!checking) void this.copyShareLink(active.id);
 				return true;

@@ -195,7 +195,8 @@ export class ExportModal extends Modal {
 			if (this.includeTranscripts) {
 				speakerNames = new Map((await client.listSpeakerProfiles({ signal }).catch(() => [])).map((p) => [p.id, p.name]));
 			}
-			const withTranscript = this.includeTranscripts ? conversations.filter((c) => !c.locked).length : 0;
+			// Transcripts still to load; private conversations found on the way are taken off.
+			let withTranscript = this.includeTranscripts ? conversations.filter((c) => !c.locked).length : 0;
 			let loaded = 0;
 			let privateCount = 0;
 			const privacy = this.plugin.privacy;
@@ -212,6 +213,7 @@ export class ExportModal extends Modal {
 				}
 				if (verdict.state === 'private') {
 					privateCount++;
+					if (this.includeTranscripts && !conversation.locked) withTranscript--;
 					continue;
 				}
 				if (this.includeTranscripts && !conversation.locked && transcript) {

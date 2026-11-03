@@ -1,4 +1,4 @@
-import type { FieldyConversation, FieldyTask, FieldyTranscriptSegment, ListConversationsParams, TaskStatus } from '../../src/api/types';
+import type { CreateSharableParams, FieldyConversation, FieldySharable, FieldyTask, FieldyTranscriptSegment, ListConversationsParams, TaskStatus } from '../../src/api/types';
 import type { FieldyApi } from '../../src/sync/SyncEngine';
 import { cancelledError } from '../../src/utils/async';
 import { FieldyError } from '../../src/utils/errors';
@@ -8,8 +8,10 @@ export class FakeFieldyApi implements FieldyApi {
 	conversations: FieldyConversation[] = [];
 	transcripts = new Map<string, FieldyTranscriptSegment[]>();
 	tasks: FieldyTask[] = [];
+	sharables = new Map<string, FieldySharable[]>();
+	failShareCreation = false;
 	failTranscriptFor = new Set<string>();
-	readonly calls = { list: 0, get: 0, transcripts: 0, tasks: 0, profiles: 0, templates: 0, sharables: 0, complete: 0 };
+	readonly calls = { list: 0, get: 0, transcripts: 0, tasks: 0, profiles: 0, templates: 0, sharables: 0, createSharable: 0, complete: 0 };
 	readonly completed: string[] = [];
 	lastListParams: Omit<ListConversationsParams, 'cursor'> | null = null;
 
@@ -59,10 +61,22 @@ export class FakeFieldyApi implements FieldyApi {
 		return [{ id: 'tpl-1', title: 'Sales call', emoji: null, description: null, prompt: '', sections: [], updatedAt: null }];
 	}
 
-	async listSharables(_conversationId: string, options: { signal?: AbortSignal } = {}) {
+	async listSharables(conversationId: string, options: { signal?: AbortSignal } = {}) {
 		this.check(options.signal);
 		this.calls.sharables++;
-		return [];
+		return structuredClone(this.sharables.get(conversationId) ?? []);
+	}
+
+	readonly createdSharables: CreateSharableParams[] = [];
+
+	async createSharable(params: CreateSharableParams, options: { signal?: AbortSignal } = {}) {
+		this.check(options.signal);
+		this.calls.createSharable++;
+		if (this.failShareCreation) throw new FieldyError('server', 'HTTP 503', { status: 503 });
+		this.createdSharables.push(structuredClone(params));
+		const link: FieldySharable = { id: `s-${params.conversationId}`, url: `https://share.example/${params.conversationId}`, enabled: true, authorName: params.authorName, sharedFields: [...params.sharedFields] };
+		this.sharables.set(params.conversationId, [link]);
+		return structuredClone(link);
 	}
 
 	async completeTask(id: string, completionDate: string, options: { signal?: AbortSignal } = {}) {

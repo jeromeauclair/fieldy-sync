@@ -4,7 +4,7 @@ import { detailsLines, locationText } from '../../markdown/ConversationRenderer'
 export type IndicatorKey = 'brief' | 'summary' | 'details' | 'tasks' | 'quotes' | 'link' | 'location' | 'calendar';
 
 /** `on`: the conversation has it; `off`: it does not; `unknown`: not checked yet. */
-export type IndicatorState = 'on' | 'off' | 'unknown';
+type IndicatorState = 'on' | 'off' | 'unknown';
 
 export interface Indicator {
 	key: IndicatorKey;

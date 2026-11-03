@@ -52,6 +52,12 @@ export interface SyncCounts {
 	skippedPrivate: number;
 	/** Notes of private conversations moved to the trash (setting "Move notes of private conversations to the trash"). */
 	privateTrashed: number;
+	/** Share links created for new notes. */
+	shareLinksCreated: number;
+	/** Share links that could not be created (the notes were created anyway). */
+	shareLinksFailed: number;
+	/** New notes that got no share link because no author name is set. */
+	shareLinksNoAuthor: number;
 	/** Conversations that started outside the "sync only at" times. */
 	skippedSchedule: number;
 	failed: number;
@@ -113,6 +119,9 @@ export function emptyCounts(): SyncCounts {
 		skippedPrivate: 0,
 		skippedSchedule: 0,
 		privateTrashed: 0,
+		shareLinksCreated: 0,
+		shareLinksFailed: 0,
+		shareLinksNoAuthor: 0,
 		failed: 0,
 		tasksPushed: 0,
 		duplicates: 0,

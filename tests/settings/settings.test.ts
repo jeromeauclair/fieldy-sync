@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
+import { DEFAULT_SETTINGS, emailName, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
 import { sanitizeSyncState } from '../../src/sync/SyncState';
 
 describe('sanitizeSettings', () => {
@@ -23,6 +23,29 @@ describe('sanitizeSettings', () => {
 		expect(s.maxRetries).toBe(10);
 		expect(s.transcriptFormat).toBe(DEFAULT_SETTINGS.transcriptFormat);
 		expect(s.subfolders).toBe('year');
+	});
+
+	it('takes the name of an email for share links', () => {
+		expect(emailName('alex.martin@example.com')).toBe('alex.martin');
+		expect(emailName('alex+fieldy@example.com')).toBe('alex');
+		expect(emailName('@example.com')).toBeNull();
+	});
+
+	it('validates the privacy and time settings', () => {
+		const s = sanitizeSettings({
+			privateKeywords: 42,
+			privateSpeakers: 'Dr Martin',
+			syncTimeRules: [{ op: 'and', days: [1, 2], from: '08:00', to: '18:00' }, 'junk'],
+			privateTimeRules: 'not a list',
+			deletePrivateNotes: 'yes',
+			showPrivateTitles: true,
+		});
+		expect(s.privateKeywords).toBe('');
+		expect(s.privateSpeakers).toBe('Dr Martin');
+		expect(s.syncTimeRules).toEqual([{ op: 'and', days: [1, 2], from: '08:00', to: '18:00' }]);
+		expect(s.privateTimeRules).toEqual([]);
+		expect(s.deletePrivateNotes).toBe(false);
+		expect(s.showPrivateTitles).toBe(true);
 	});
 
 	it('drops unknown keys, so a stray plaintext key is never kept or re-saved', () => {

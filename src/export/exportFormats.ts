@@ -20,7 +20,7 @@ export interface ExportItem {
 	transcript: readonly FieldyTranscriptSegment[] | null;
 }
 
-export interface ExportInfo {
+interface ExportInfo {
 	exportedAt: string;
 	/** Null for the whole history. */
 	range: { startTime: string; endTime: string } | null;

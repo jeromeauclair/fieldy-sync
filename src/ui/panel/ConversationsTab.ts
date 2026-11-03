@@ -1,6 +1,6 @@
-import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, moment, Notice, setIcon, setTooltip } from 'obsidian';
+import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, moment, Notice, setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import type { RestoreChoice } from '../../sync/SyncEngine';
-import { RECORDING_SOURCES, type FieldyConversation, type Page, type RecordingSource, type TaskStatus } from '../../api/types';
+import { RECORDING_SOURCES, type FieldyConversation, type FieldySharable, type Page, type RecordingSource, type TaskStatus } from '../../api/types';
 import {
 	detailsLines,
 	displayTitle,
@@ -14,7 +14,7 @@ import {
 import { sleep } from '../../utils/async';
 import { durationMinutes, formatDuration, HISTORY_START_ISO } from '../../utils/dates';
 import { describeError, isCancellation } from '../../utils/errors';
-import { FIELDY_REFERRAL_URL } from '../../settings/settings';
+import { FIELDY_REFERRAL_URL, shareLinkFields } from '../../settings/settings';
 import type { PrivacyVerdict } from '../../privacy/PrivacyGuard';
 import { describeMatches } from '../../privacy/privacy';
 import type { LocalStatus } from '../../main';
@@ -260,8 +260,9 @@ export class ConversationsTab {
 
 	/** Settings changed: privacy filters may now match other cards. */
 	onSettingsChanged(): void {
-		// Without privacy filters the lock icon is gone, so its rule must not keep hiding cards.
+		// Without privacy filters the lock icon is gone, so its rule must not keep hiding cards; the same for share links.
 		if (!this.plugin.privacy.active()) this.filters.privacy = null;
+		if (!this.plugin.settings.useShareLinks) delete this.filters.content.link;
 		if (!this.loaded) return;
 		this.queuePrivacyChecks(this.items);
 		this.renderList();
@@ -328,6 +329,7 @@ export class ConversationsTab {
 
 	/** Checks share links in the background, one at a time, without crowding out other requests. */
 	private queueLinkChecks(ids: readonly string[], first = false): void {
+		if (!this.plugin.settings.useShareLinks) return;
 		const pending = ids.filter((id) => !this.linkStates.has(id) && this.isPublic(id));
 		const added = new Set(pending);
 		if (first) this.linkQueue = [...pending, ...this.linkQueue.filter((id) => !added.has(id))];
@@ -482,7 +484,8 @@ export class ConversationsTab {
 	}
 
 	private indicatorsFor(c: FieldyConversation): Indicator[] {
-		return conversationIndicators(c, this.taskCounts?.get(c.id) ?? (this.taskCounts ? 0 : undefined), this.linkStates.get(c.id));
+		const all = conversationIndicators(c, this.taskCounts?.get(c.id) ?? (this.taskCounts ? 0 : undefined), this.linkStates.get(c.id));
+		return this.plugin.settings.useShareLinks ? all : all.filter((i) => i.key !== 'link');
 	}
 
 	private renderIndicators(el: HTMLElement, c: FieldyConversation): void {
@@ -766,6 +769,7 @@ export class ConversationsTab {
 		const icons = this.contentFiltersEl;
 		icons.empty();
 		for (const key of INDICATOR_ORDER) {
+			if (key === 'link' && !this.plugin.settings.useShareLinks) continue;
 			const rule = this.filters.content[key];
 			const name = INDICATOR_NAMES[key];
 			const hint =
@@ -1028,6 +1032,88 @@ export class ConversationsTab {
 		freshHeader.focus({ preventScroll: true });
 	}
 
+	/**
+	 * The conversation's Fieldy share link as a switch: on creates it (or turns
+	 * a turned-off one back on), off turns it off. Changes are sent to Fieldy
+	 * only on click. Share links are public: anyone with the URL can read them.
+	 */
+	private renderShareLink(row: HTMLElement, c: FieldyConversation): void {
+		const label = row.createSpan({ cls: 'fieldy-share-label', text: 'Share link' });
+		setIcon(label.createSpan({ cls: 'fieldy-share-icon' }), INDICATOR_ICONS.link);
+		const toggle = new ToggleComponent(row);
+		toggle.setDisabled(true);
+		const info = row.createSpan({ cls: 'fieldy-share-info fieldy-muted', text: 'Checking…' });
+		let links: FieldySharable[] = [];
+		let busy = false;
+
+		const show = () => {
+			const active = links.find((l) => l.enabled);
+			const any = active ?? links[0];
+			toggle.setValue(active !== undefined);
+			info.empty();
+			if (active) {
+				const link = info.createEl('a', { cls: 'fieldy-share-url', text: active.url, href: active.url, attr: { target: '_blank', rel: 'noopener noreferrer' } });
+				setTooltip(link, 'Public: anyone with this link can read what it shares.');
+				const copy = info.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Copy the share link' } });
+				setIcon(copy, 'copy');
+				copy.addEventListener('click', () => void copyToClipboard(active.url, 'Share link'));
+			} else {
+				info.setText(any ? 'Turned off: the link no longer opens.' : 'No share link. Turn on to create one (public: anyone with the link can read it).');
+			}
+			this.linkStates.set(c.id, active !== undefined);
+			if (this.filters.content.link) this.renderList();
+			else this.updateIndicators(c.id);
+		};
+
+		const change = async (on: boolean) => {
+			if (busy) return;
+			const current = links.find((l) => l.enabled) ?? links[0];
+			busy = true;
+			toggle.setDisabled(true);
+			try {
+				const author = current ? '' : await this.plugin.shareLinkAuthor();
+				if (on && !current && !author) {
+					new Notice('First add an author name for share links in the plugin settings (note content page): Fieldy shows it on every link.');
+					return;
+				}
+				const client = this.plugin.client;
+				const signal = this.view.data.signal;
+				const updated = current
+					? await client.setSharableEnabled(current.id, on, { signal })
+					: await client.createSharable({ conversationId: c.id, authorName: author ?? '', sharedFields: shareLinkFields(this.plugin.settings) }, { signal });
+				this.plugin.reportRequestOutcome();
+				links = current ? links.map((l) => (l.id === updated.id ? updated : l)) : [updated];
+				this.view.data.setSharables(c.id, links);
+				new Notice(on ? 'Share link turned on.' : 'Share link turned off.');
+			} catch (err) {
+				if (!isCancellation(err)) {
+					this.plugin.reportRequestOutcome(err);
+					new Notice(describeError(err));
+				}
+			} finally {
+				busy = false;
+				toggle.setDisabled(false);
+				show();
+			}
+		};
+		toggle.onChange((on) => {
+			// setValue() from show() also calls this; only a real change goes to Fieldy.
+			const active = links.some((l) => l.enabled);
+			if (on !== active) void change(on);
+		});
+
+		void this.view.data
+			.sharables(c.id)
+			.then((found) => {
+				links = found;
+				toggle.setDisabled(false);
+				show();
+			})
+			.catch((err: unknown) => {
+				if (!isCancellation(err)) info.setText(describeError(err));
+			});
+	}
+
 	private renderBody(body: HTMLElement, c: FieldyConversation, status: RowStatus): void {
 		const component = new Component();
 		this.view.addChild(component);
@@ -1053,6 +1139,8 @@ export class ConversationsTab {
 			body.createDiv({ cls: 'fieldy-muted', text: STATUS_HINTS.locked });
 			return;
 		}
+
+		if (this.plugin.settings.useShareLinks) this.renderShareLink(body.createDiv({ cls: 'fieldy-share-row' }), c);
 
 		const summary = summaryLines(c);
 		if (summary.length > 0) markdown(section('Summary'), summary.join('\n'));
@@ -1165,13 +1253,15 @@ export class ConversationsTab {
 		);
 		// Greyed out once the background check found no active share link.
 		const noLink = this.linkStates.get(c.id) === false;
-		menu.addItem((item) =>
-			item
-				.setTitle(`Fieldy share link${noLink ? ' (none yet)' : ''}`)
-				.setIcon('share-2')
-				.setDisabled(noLink)
-				.onClick(() => void this.deliverShareLink(c, mode)),
-		);
+		if (this.plugin.settings.useShareLinks) {
+			menu.addItem((item) =>
+				item
+					.setTitle(`Fieldy share link${noLink ? ' (none yet)' : ''}`)
+					.setIcon('share-2')
+					.setDisabled(noLink)
+					.onClick(() => void this.deliverShareLink(c, mode)),
+			);
+		}
 		menu.addItem((item) =>
 			item
 				.setTitle('Conversation ID')

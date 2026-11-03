@@ -15,10 +15,10 @@
  * ```
  */
 
-export type QueryShow = 'conversations' | 'tasks' | 'stats';
-export type QueryKind = 'all' | 'full' | 'brief';
-export type QueryTasks = 'open' | 'done' | 'all';
-export type QuerySort = 'newest' | 'oldest' | 'longest';
+type QueryShow = 'conversations' | 'tasks' | 'stats';
+type QueryKind = 'all' | 'full' | 'brief';
+type QueryTasks = 'open' | 'done' | 'all';
+type QuerySort = 'newest' | 'oldest' | 'longest';
 
 export interface FieldyQuery {
 	show: QueryShow;

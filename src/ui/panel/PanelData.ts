@@ -145,15 +145,26 @@ export class PanelData {
 	}
 
 	sharables(conversationId: string): Promise<FieldySharable[]> {
+		// Share links turned off: never asked for.
+		if (!this.plugin.settings.useShareLinks) return Promise.resolve([]);
 		let promise = this.shareLinks.get(conversationId);
 		if (!promise) {
 			promise = this.track(
 				() => this.plugin.client.listSharables(conversationId, { signal: this.signal }),
 				() => this.shareLinks.delete(conversationId),
-			);
+			).then((links) => {
+				const author = links.find((l) => l.authorName.trim() !== '')?.authorName;
+				if (author) this.plugin.rememberShareAuthor(author);
+				return links;
+			});
 			this.shareLinks.set(conversationId, promise);
 		}
 		return promise;
+	}
+
+	/** Puts a conversation's links changed from the panel into the cache. */
+	setSharables(conversationId: string, links: FieldySharable[]): void {
+		this.shareLinks.set(conversationId, Promise.resolve(links));
 	}
 
 	/** Everything needed to render pieces of a conversation; the transcript only when asked. */

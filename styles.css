@@ -1187,3 +1187,41 @@
 .fieldy-clock-minutes:disabled {
 	opacity: 0.5;
 }
+
+/* Share link switch inside an expanded card. */
+.fieldy-share-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-3);
+	margin: var(--size-2-3) 0;
+}
+
+.fieldy-share-label {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	font-weight: var(--font-semibold);
+	font-size: var(--font-ui-small);
+}
+
+.fieldy-share-icon {
+	display: inline-flex;
+	color: var(--text-muted);
+	--icon-size: var(--icon-xs);
+}
+
+.fieldy-share-info {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	min-width: 0;
+	font-size: var(--font-ui-smaller);
+}
+
+.fieldy-share-url {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 22em;
+}

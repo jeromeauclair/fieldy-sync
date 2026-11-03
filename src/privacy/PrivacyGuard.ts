@@ -57,6 +57,9 @@ export function sanitizeTranscriptChecks(raw: unknown): Record<string, Transcrip
 }
 
 export class TranscriptCheckCache {
+	/** Bumped on every change, so verdicts built on older results are recomputed. */
+	revision = 0;
+
 	constructor(
 		private data: Record<string, TranscriptCheck> = {},
 		private readonly onChange: () => void = () => undefined,
@@ -69,6 +72,7 @@ export class TranscriptCheckCache {
 	set(id: string, check: TranscriptCheck): void {
 		delete this.data[id];
 		this.data[id] = check;
+		this.revision++;
 		const ids = Object.keys(this.data);
 		// Oldest entries first (insertion order).
 		for (let i = 0; i < ids.length - MAX_TRANSCRIPT_CHECKS; i++) delete this.data[ids[i]!];
@@ -77,6 +81,7 @@ export class TranscriptCheckCache {
 
 	replace(data: Record<string, TranscriptCheck>): void {
 		this.data = data;
+		this.revision++;
 	}
 
 	toJSON(): Record<string, TranscriptCheck> {
@@ -84,7 +89,7 @@ export class TranscriptCheckCache {
 	}
 }
 
-export interface PrivacyClient {
+interface PrivacyClient {
 	listTranscriptions(params: ListTranscriptionsParams, options?: { signal?: AbortSignal }): Promise<FieldyTranscriptSegment[]>;
 	listMemoryTemplates(options?: { signal?: AbortSignal }): Promise<FieldyMemoryTemplate[]>;
 }
@@ -105,6 +110,13 @@ export class PrivacyGuard {
 	private rulesFor: { source: string; rules: PrivacyRules } | null = null;
 	private templateTitles: Map<string, string> | null = null;
 	private templatesLoading: Promise<void> | null = null;
+	/** Bumped when template names arrive or are forgotten. */
+	private templatesRevision = 0;
+	/**
+	 * Verdicts by conversation object. The panel asks about each card several
+	 * times per redraw, and time rules check a conversation minute by minute.
+	 */
+	private verdicts = new WeakMap<FieldyConversation, { key: string; verdict: PrivacyVerdict }>();
 
 	constructor(private readonly deps: PrivacyGuardDeps) {}
 
@@ -124,11 +136,13 @@ export class PrivacyGuard {
 	forgetTemplates(): void {
 		this.templateTitles = null;
 		this.templatesLoading = null;
+		this.templatesRevision++;
 	}
 
 	/** Uses template names the caller already loaded. */
 	setTemplates(templates: readonly Pick<FieldyMemoryTemplate, 'id' | 'title'>[]): void {
 		this.templateTitles = new Map(templates.map((t) => [t.id, t.title]));
+		this.templatesRevision++;
 	}
 
 	private async loadTemplates(signal?: AbortSignal): Promise<void> {
@@ -151,6 +165,15 @@ export class PrivacyGuard {
 	check(c: FieldyConversation): PrivacyVerdict {
 		const rules = this.rules();
 		if (!hasPrivacyRules(rules)) return PUBLIC;
+		const key = `${this.rulesFor?.source ?? ''}\u0001${this.templatesRevision}\u0001${this.deps.cache.revision}`;
+		const known = this.verdicts.get(c);
+		if (known?.key === key) return known.verdict;
+		const verdict = this.decide(c, rules);
+		this.verdicts.set(c, { key, verdict });
+		return verdict;
+	}
+
+	private decide(c: FieldyConversation, rules: PrivacyRules): PrivacyVerdict {
 		const needsTemplateName = rules.templates.length > 0 && c.templateId !== null && this.templateTitles === null;
 		const direct = conversationMatches(c, rules, c.templateId ? (this.templateTitles?.get(c.templateId) ?? null) : null);
 		if (direct.length > 0) return { state: 'private', matches: direct };

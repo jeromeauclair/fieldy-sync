@@ -128,6 +128,17 @@ describe('PrivacyGuard', () => {
 		expect(api.calls.transcripts).toBe(0);
 	});
 
+	it('reuses a verdict until the filters change', () => {
+		let settings = testSettings({ privateKeywords: 'acme' });
+		const guard = new PrivacyGuard({ settings: () => settings, client: new FakeFieldyApi(), cache: new TranscriptCheckCache() });
+		const c = makeConversation('c', { title: 'Acme call' });
+		const first = guard.check(c);
+		expect(first.state).toBe('private');
+		expect(guard.check(c)).toBe(first);
+		settings = testSettings({ privateKeywords: 'other' });
+		expect(guard.check(c).state).toBe('public');
+	});
+
 	it('drops malformed stored results', () => {
 		expect(sanitizeTranscriptChecks({ a: { key: 'k', updatedAt: null, matches: [{ kind: 'nope', value: 'x' }, { kind: 'keyword', value: 'y' }] }, b: 'junk' })).toEqual({
 			a: { key: 'k', updatedAt: null, matches: [{ kind: 'keyword', value: 'y' }] },

@@ -2,26 +2,6 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
-
-### Privacy filters
-
-- New **Privacy** settings page: private keywords, speakers, places and Fieldy memory templates (one per line; case and accents ignored; whole words, `*` for word starts), and private times as a form of rules (days, from, to, combined with *or*, *and*, *except*). A conversation with any moment in a private time is private.
-- Private conversations get no note, their tasks are hidden, and they are left out of exports and shown as *Private* in the import dialog. In the panel they appear as a brief card with their date and the matching filter, and never match a search or another filter; a lock icon in the filter row shows only them, hides them, or either. Their speakers and places are not offered as filter choices.
-- Notes imported before a filter matched are kept as they are, no longer updated, with a *Private* banner; Settings lists them for review. Optional (off by default, asks first): move them to the trash instead.
-- Optional: show the titles of private conversations (and the brief icon) on their cards.
-- Optional **Also search transcripts** (off by default, with a warning about the extra requests): checks each transcript once and remembers the result.
-- Diagnostics never include privacy filter entries.
-
-### Sync times
-
-- **Only sync conversations recorded at** (Sync settings): the same form of time rules, such as *Mon–Fri 08:00–18:00, except 12:00–13:00*. Conversations that started at other times are left alone by sync; imports are not limited.
-
-### Fixes
-
-- Side panel: a card that changed while on screen could stop the list from redrawing.
-- Side panel: changing the period while the first conversations were still loading left the list loading forever.
-
 ## 1.0.0
 
 First release, licensed under the Functional Source License (FSL-1.1-MIT). Requires Obsidian 1.14.0 or newer. Tested on desktop; it installs on mobile with a one-time "not tested yet" notice (full mobile support is planned for 1.2). Documentation: [README](https://github.com/jeromeauclair/fieldy-sync/blob/main/README.md), [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) and [reference](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md).
@@ -37,14 +17,25 @@ First release, licensed under the Functional Source License (FSL-1.1-MIT). Requi
 - Transcript formats: paragraphs, timestamped, timestamped with speakers; time of day or elapsed; optional collapsed callout.
 - Subfolders by year, month, year/month, ISO week, day, or a custom Moment format.
 - Optional speaker links: speaker names matching a people note's name or alias become links in the note, its `fieldy_speakers` property and, optionally, the transcript. Creating a people note later updates the conversation notes that mention that person. Optionally, sync creates a people note for speakers who have none.
+- **Use Fieldy share links** (on by default): off, the plugin never lists, checks, creates or changes share links and shows none.
+- A Fieldy share link for every new note, if the conversation has none (on by default; the author name is copied from a link made in the Fieldy app, or else the account email's name; transcript included unless turned off). A failure never blocks the note.
 - Tasks as checkboxes; ticking is never an edit. Optional, off by default: ticked tasks are marked completed in Fieldy. Optional `[due:: …]` due dates for Dataview.
 
 ### Side panel
 
 - Connection status with the requests sent in the last minute; last sync; sync, import and edited-notes buttons.
-- Conversations: periods from today to the entire history (including 3 and 14 days), search, content icons (brief, summary, memory content, tasks, quotes, share link, location, calendar event) and recording source, icon filters and a filter bar (date, time of day, speaker, location, note status). Card icons copy their content on click and offer insert, the Tasks plugin format, Google Maps or OpenStreetMap, and the share link on right-click. Copy and Insert menus grey out pieces a conversation lacks. Cards open in place without the list jumping; a loaded transcript can be hidden again.
+- Conversations: periods from today to the entire history (including 3 and 14 days), search, content icons (brief, summary, memory content, tasks, quotes, share link, location, calendar event) and recording source, icon filters and a filter bar (date, time of day, speaker, location, note status). Card icons copy their content on click and offer insert, the Tasks plugin format, Google Maps or OpenStreetMap, and the share link on right-click. Copy and Insert menus grey out pieces a conversation lacks. Cards open in place without the list jumping; a loaded transcript can be hidden again. An expanded card's share link switch creates the conversation's Fieldy share link or turns it on or off, with the link and a copy button.
 - Tasks tab: icon filters for open, completed and dismissed tasks with counts (only these, hidden or any, like the Conversations filters), grouping by due date or conversation; mark done, reopen, edit title and due date, or cancel in Fieldy (only on click); insert or copy as Obsidian Tasks items (emoji or Dataview format, global filter) when the Tasks plugin is enabled.
 - Account: connection, export, speaker profiles, and memory templates with their last change.
+
+### Privacy filters and sync times
+
+- **Privacy** settings page: private keywords, speakers, places and Fieldy memory templates (one per line; case and accents ignored; whole words, `*` for word starts), and private times as a small form of rules (days, from, to, combined with *or*, *and*, *except*). A conversation with any moment in a private time is private.
+- Private conversations get no note, their tasks are hidden, and they are left out of exports and shown as *Private* in the import dialog. In the panel they appear as a brief card with their date and the matching filter (optionally their title), and never match a search or another filter; a lock icon in the filter row shows only them, hides them, or either.
+- Notes imported before a filter matched are kept as they are, no longer updated, with a *Private* banner, and listed in the settings; optionally (off by default, asks first) sync moves them to the trash instead.
+- Privacy filters are a filter, not security: the settings and docs say so. Anyone with the API key can read the whole Fieldy account.
+- Optional **Also search transcripts**, with a warning about the extra requests: each transcript is checked once and the result remembered.
+- **Only sync conversations recorded at** (Sync settings): the same time rules, such as *Mon–Fri 08:00–18:00, except 12:00–13:00*. Conversations that started at other times are left alone by sync; imports are not limited.
 
 ### Dashboards, Dataview and export
 
@@ -59,4 +50,4 @@ First release, licensed under the Functional Source License (FSL-1.1-MIT). Requi
 - Rate limiting within Fieldy's 100 requests per minute, retries with backoff, timeouts, cancellation and clear error messages.
 - Built for long histories: panel lists are drawn in batches and keep open cards while searching, filtering and after syncs; share links are checked only for cards in view; list endpoints follow page cursors and settings changes are saved together.
 - Edited notes review built for long lists: search, sort, compact rows, paging, and restoring a selection of notes at once.
-- Restoring a Fieldy version never writes plan-locked content; "Unknown" and other generic speakers never get a people note; existing folders with different capitalisation are reused; settings and sync indexes from other devices are merged safely; edited notes never trigger notices; image embeds and `obsidian://` links in Fieldy text are neutralised; Windows device names with extensions are made safe; diagnostics never include note paths or titles.
+- Restoring a Fieldy version never writes plan-locked content; "Unknown" and other generic speakers never get a people note; existing folders with different capitalisation are reused; settings and sync indexes from other devices are merged safely; edited notes never trigger notices; image embeds and `obsidian://` links in Fieldy text are neutralised; Windows device names with extensions are made safe; diagnostics never include note paths, titles or privacy filter entries.

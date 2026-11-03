@@ -27,7 +27,9 @@ export class PrivateNotesModal extends Modal {
 			return;
 		}
 		contentEl.createEl('p', {
-			text: 'These notes were imported before a privacy filter matched their conversation. Sync no longer updates them and never deletes them: open one to delete it yourself if you do not want it in your vault.',
+			text: this.plugin.settings.deletePrivateNotes
+				? 'These notes were imported before a privacy filter matched their conversation. "Move notes of private conversations to the trash" is on, so the next sync moves them to the trash.'
+				: 'These notes were imported before a privacy filter matched their conversation. Sync no longer updates them and does not delete them: open one to delete it yourself, or turn on "Move notes of private conversations to the trash".',
 		});
 		const list = contentEl.createDiv({ cls: 'fieldy-private-list' });
 		for (const record of records) {

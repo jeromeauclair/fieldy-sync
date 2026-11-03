@@ -323,6 +323,34 @@ describe('FieldyClient tasks, profiles and sharables', () => {
 		expect(JSON.parse(call.body ?? '{}')).toEqual({ status: 'completed', completionDate: '2026-10-02T00:00:00.000Z' });
 	});
 
+	it('creates a share link with a JSON POST body', async () => {
+		const transport = sequenceTransport([json(200, { id: 's1', url: 'https://fieldy.ai/s/abc' })]);
+		const { client } = createTestClient(transport);
+		const link = await client.createSharable({ conversationId: 'c1', authorName: 'Alex', sharedFields: ['title', 'summary'] });
+		expect(link).toEqual({ id: 's1', url: 'https://fieldy.ai/s/abc', enabled: true, authorName: 'Alex', sharedFields: ['title', 'summary'] });
+		const call = transport.calls[0]!;
+		expect(call.method).toBe('POST');
+		expect(call.url).toContain('/sharables');
+		expect(JSON.parse(call.body ?? '{}')).toEqual({ authorName: 'Alex', sharedFields: ['title', 'summary'], targetDocId: 'c1' });
+	});
+
+	it('turns a share link on or off with a PATCH', async () => {
+		const transport = sequenceTransport([json(200, { id: 's1', url: 'https://fieldy.ai/s/abc', enabled: false, authorName: 'Alex', sharedFields: ['title'] })]);
+		const { client } = createTestClient(transport);
+		const link = await client.setSharableEnabled('s1', false);
+		expect(link.enabled).toBe(false);
+		const call = transport.calls[0]!;
+		expect(call.method).toBe('PATCH');
+		expect(call.url).toContain('/sharables/s1');
+		expect(JSON.parse(call.body ?? '{}')).toEqual({ enabled: false });
+	});
+
+	it('rejects a share link creation without a usable link', async () => {
+		const transport = sequenceTransport([json(200, { id: 's1', url: 'http://insecure' })]);
+		const { client } = createTestClient(transport);
+		await expect(client.createSharable({ conversationId: 'c1', authorName: 'Alex', sharedFields: [] })).rejects.toMatchObject({ kind: 'malformed-response' });
+	});
+
 	it('parses speaker profiles, templates and only https share links', async () => {
 		const transport = mockTransport((req) => {
 			if (req.url.includes('/speaker-profiles')) return json(200, { items: [{ id: 'p1', name: 'Alex', color: '#ff0000' }, { id: 'p2' }] });

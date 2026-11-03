@@ -352,7 +352,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 						{ strong: 'Documentation: ' },
 						'the ',
 						{ link: 'user guide', href: GUIDE_URL },
-						' (panel, banners, dashboards, Dataview, export) and the ',
+						' (panel, banners, dashboards, Dataview, privacy filters, export) and the ',
 						{ link: 'reference', href: REFERENCE_URL },
 						' (every setting, how sync works, troubleshooting).',
 					],
@@ -599,16 +599,17 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Note content',
-				desc: 'The sections synced notes contain.',
+				desc: 'The sections synced notes contain, share links and the section banner.',
 				items: [
 					{
 						type: 'group',
+						heading: 'Sections',
 						items: [
 							{
 								name: 'What goes into a note',
 								searchable: false,
 								desc: help([
-									'Choose the sections synced notes contain (tasks have their own page). Sections Fieldy has no data for are always left out. Changes apply to new notes, and to unedited notes in your sync window on the next sync.',
+									'Choose the sections synced notes contain; tasks and the transcript have their own pages. Sections Fieldy has no data for are always left out. Changes apply to new notes, and to unedited notes in your sync window on the next sync.',
 								]),
 							},
 							{ name: 'Summary', desc: help(['Fieldy\'s AI summary of the conversation.']), control: { type: 'toggle', key: 'includeSummary' } },
@@ -619,24 +620,64 @@ export class FieldySettingsTab extends PluginSettingTab {
 								control: { type: 'toggle', key: 'includeDetails' },
 							},
 							{ name: 'Quotes', desc: help(['Notable quotes Fieldy picked out, with their context.']), control: { type: 'toggle', key: 'includeQuotes' } },
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Share links',
+						items: [
 							{
-								name: 'Transcript',
-								desc: help(['The word-for-word transcript. It needs one extra request per new or changed conversation; turn it off for shorter notes and faster syncs.']),
-								control: { type: 'toggle', key: 'includeTranscript' },
+								name: 'Use Fieldy share links',
+								aliases: ['share', 'local', 'offline', 'public link'],
+								desc: help(
+									['On: the plugin shows your conversations\' Fieldy share links (on the side panel\'s cards, with a switch to turn each one on or off) and can list and create them as set below. ', { strong: 'Share links are public:' }, ' anyone with the URL can read what they share.'],
+									['Off: the plugin never asks Fieldy about share links, never creates or changes one, and shows none. For a local-first setup. Links you made in the Fieldy app are not touched.'],
+								),
+								control: { type: 'toggle', key: 'useShareLinks' },
 							},
 							{
-								name: 'Share links',
-								desc: help([
-									'Lists the links you created in the Fieldy app to share this conversation. Needs one extra request per updated note, and the list is refreshed only when the note updates.',
-								]),
+								name: 'List share links in notes',
+								aliases: ['share links section'],
+								visible: () => s().useShareLinks,
+								desc: help(['Adds a "Share links" section with the conversation\'s links to its note. One extra request per updated note; the list is refreshed only when the note updates.']),
 								control: { type: 'toggle', key: 'includeShareLinks' },
 							},
+							{
+								name: 'Create a share link for new notes',
+								aliases: ['share', 'public link', 'sharable'],
+								visible: () => s().useShareLinks,
+								desc: help(['When sync or an import creates a note, it also creates the conversation\'s share link if it has none (a link you turned off stays off). One or two requests per new note. Private conversations never get a note, so never get a link.']),
+								control: { type: 'toggle', key: 'createShareLinks' },
+							},
+							{
+								name: 'Author name on share links',
+								aliases: ['share', 'name'],
+								visible: () => s().useShareLinks,
+								desc: help(
+									['Fieldy requires one and shows it on every link the plugin creates, for new notes or with a card\'s switch. Filled in from a link you made in the Fieldy app once the plugin sees one.'],
+									['Empty: the name of your Fieldy account\'s email is used (the part before the @, such as "alex.martin" for alex.martin@example.com). It then appears publicly on every new link; type a name to avoid that.'],
+								),
+								control: { type: 'text', key: 'shareLinkAuthor', placeholder: 'Your email name' },
+							},
+							{
+								name: 'Share the transcript',
+								aliases: ['share', 'transcript'],
+								visible: () => s().useShareLinks,
+								desc: help(['Links the plugin creates also share everything that was said, like the Fieldy app\'s own links. Off: the title, date, summary, quotes and keywords only.']),
+								control: { type: 'toggle', key: 'shareLinkTranscript' },
+							},
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Section banner',
+						items: [
 							{
 								name: 'Section banner',
 								aliases: ['markers', 'fieldy:begin', 'status'],
 								desc: help(
 									[
-										'Shows the start of the Fieldy section as a small banner, with its state (synced, edited or paused), when it was last synced and quick actions, and its end as a divider. Live Preview and reading view only.',
+										'Shows the start of the Fieldy section as a small banner, with its state (synced, edited, paused or private), when it was last synced and quick actions, and its end as a divider. Live Preview and reading view only.',
 									],
 									['Display only: the note itself still contains the plain ', { code: '%% fieldy:begin %%' }, ' and ', { code: '%% fieldy:end %%' }, ' markers, visible in source mode.'],
 								),
@@ -645,13 +686,13 @@ export class FieldySettingsTab extends PluginSettingTab {
 							{
 								name: 'Banner colours',
 								aliases: ['color', 'colour', 'theme'],
-								desc: help(['Use the theme\'s blue, orange and grey for synced, edited and paused sections, or choose your own, with separate colours for light and dark mode.']),
+								desc: help(['The theme\'s blue, orange and grey for synced, edited and paused or private sections, or your own colours, separately for light and dark mode.']),
 								visible: () => s().showNoteBanner,
 								control: { type: 'dropdown', key: 'bannerColors', options: { theme: 'Theme colours', custom: 'Custom colours' } },
 							},
 							this.bannerColorRow('Synced colour', 'Banners of sections kept up to date from Fieldy.', 'bannerColorSynced', 'bannerColorSyncedDark'),
 							this.bannerColorRow('Edited colour', 'Banners of sections you changed.', 'bannerColorEdited', 'bannerColorEditedDark'),
-							this.bannerColorRow('Paused colour', 'Banners of notes with fieldy_sync: false.', 'bannerColorPaused', 'bannerColorPausedDark'),
+							this.bannerColorRow('Paused colour', 'Banners of notes with fieldy_sync: false, and of private conversations\' notes.', 'bannerColorPaused', 'bannerColorPausedDark'),
 						],
 					},
 				],
@@ -696,7 +737,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 								aliases: ['two-way', 'push'],
 								desc: help(
 									['Optional, off by default. When you tick an open task in a note, the next sync also marks it completed in Fieldy.'],
-									['Apart from the task changes you make yourself in the side panel\'s Tasks tab, this is the only change the plugin makes in your Fieldy account. It never deletes tasks and never edits conversations.'],
+									['Besides the task changes you make yourself in the side panel\'s Tasks tab and the share links of new notes (Note content page), this is the only change the plugin makes in your Fieldy account. It never deletes tasks and never edits conversations.'],
 								),
 								visible: () => s().includeTasks,
 								control: { type: 'toggle', key: 'pushTaskCompletion' },
@@ -708,13 +749,20 @@ export class FieldySettingsTab extends PluginSettingTab {
 			{
 				type: 'page',
 				name: 'Transcript',
-				desc: 'How transcripts are written.',
+				desc: 'Whether notes include the transcript, and how it is written.',
 				items: [
 					{
 						type: 'group',
 						items: [
 							{
+								name: 'Transcript',
+								aliases: ['include transcript'],
+								desc: help(['Adds the word-for-word transcript to notes. It needs one extra request per new or changed conversation; turn it off for shorter notes and faster syncs.']),
+								control: { type: 'toggle', key: 'includeTranscript' },
+							},
+							{
 								name: 'Transcript format',
+								visible: () => s().includeTranscript,
 								desc: help(
 									[{ strong: 'Timestamped, with speakers: ' }, 'one line per speaker turn, with the time and the speaker\'s name.'],
 									[{ strong: 'Timestamped segments: ' }, 'one line per short segment, with its time but without names.'],
@@ -729,15 +777,19 @@ export class FieldySettingsTab extends PluginSettingTab {
 							{
 								name: 'Transcript timestamps',
 								desc: help(['"Time of day" shows when something was said (14:05:12). "Time since start" counts from the beginning of the conversation (05:12), handy for long recordings.']),
-								visible: () => s().transcriptFormat !== 'paragraphs',
+								visible: () => s().includeTranscript && s().transcriptFormat !== 'paragraphs',
 								control: { type: 'dropdown', key: 'timestampStyle', options: { clock: 'Time of day (14:05:12)', elapsed: 'Time since start (05:12)' } },
 							},
 							{
 								name: 'Collapse transcript',
+								visible: () => s().includeTranscript,
 								desc: help(['Puts the transcript in a folded callout so long transcripts do not fill the note. Click it to unfold.']),
 								control: { type: 'toggle', key: 'collapseTranscript' },
 							},
-							this.livePreview('Transcript preview', 'A short sample written with the options above (Markdown as stored in the note):', () => this.transcriptPreview(), true),
+							{
+								...this.livePreview('Transcript preview', 'A short sample written with the options above (Markdown as stored in the note):', () => this.transcriptPreview(), true),
+								visible: () => s().includeTranscript,
+							},
 						],
 					},
 				],
@@ -852,8 +904,9 @@ export class FieldySettingsTab extends PluginSettingTab {
 								name: 'How privacy filters work',
 								searchable: false,
 								desc: help(
+									[{ strong: 'Not a security feature: ' }, 'no real privacy should be expected from these filters. They only filter: matching conversations get no note and some views of this plugin hide them. Everything stays in your Fieldy account, private conversations included, and anyone with your API key (or your Fieldy login) can read all of it, through Fieldy or any other tool. Other Obsidian plugins can also read secrets stored in Obsidian.'],
 									['A conversation that matches any filter below is private: sync creates no note for it, its tasks are hidden, and it is left out of exports. In the side panel it shows as a short "Private conversation" card with its date and the filter that matched, and nothing else.'],
-									['A note imported before you added a filter stays in your vault exactly as it is, but is no longer updated; its banner says "Private". Nothing is ever deleted for you.'],
+									['A note imported before you added a filter stays in your vault exactly as it is, but is no longer updated; its banner says "Private". It is only deleted (to the trash) if you turn that on below.'],
 									['One entry per line (or separated by commas). Case and accents are ignored. Keywords and places match whole words; end one with * to match words starting with it (therap* matches therapy and therapist).'],
 								),
 							},

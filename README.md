@@ -10,7 +10,7 @@ An Obsidian plugin by an independent developer, not affiliated with Fieldy. Its 
 
 <sub>Screenshots use an invented demo account.</sub>
 
-**Documentation:** this page covers installation and setup. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) explains the panel, the note banners, dashboards, Dataview, edited notes, import and export. The [reference](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md) lists every setting and command and explains how sync works, with troubleshooting and an FAQ.
+**Documentation:** this page covers installation and setup. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) explains the panel, the note banners, dashboards, Dataview, edited notes, privacy filters, import and export. The [reference](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md) lists every setting and command and explains how sync works, with troubleshooting and an FAQ.
 
 ## Features
 
@@ -21,8 +21,8 @@ An Obsidian plugin by an independent developer, not affiliated with Fieldy. Its 
 - **Dashboards in any note.** A `fieldy` code block lists conversations, tasks or stats from your Fieldy notes, without any other plugin. Fieldy notes also work with [Dataview](https://github.com/blacksmithgu/obsidian-dataview), with ready-made queries one command away.
 - **Import and export.** Bring in your entire history, or export it to Markdown, JSON, CSV or plain text.
 - **Speakers linked to your people notes** (optional), so a person's note lists every conversation they were in.
-- **Privacy filters.** Keep conversations out of your vault by keyword, speaker, place or Fieldy template; the panel shows them only as a brief "Private conversation" card.
-- **Built for large accounts,** within Fieldy's rate limit, with manual, on-startup and periodic sync.
+- **Privacy filters.** Keep conversations out of your vault by keyword, speaker, place, Fieldy template or time (your lunch break, the weekend…); the panel shows them only as a brief "Private conversation" card. This is a filter, not security: anyone with your API key can still read everything in your Fieldy account.
+- **Built for large accounts,** within Fieldy's rate limit, with manual, on-startup and periodic sync, optionally limited to the days and hours you choose.
 - **Secure API key handling** with Obsidian's secret storage. The key is never written to the plugin's settings file, logs or notes.
 
 ## Requirements
@@ -54,7 +54,7 @@ API keys are created in the Fieldy mobile or desktop app under **Settings → De
 1. Open **Settings → Fieldy Sync → Connection**.
 2. Under **API key**, choose an existing secret or create a new one and paste your Fieldy key into it. The key is stored in Obsidian's secret storage; the plugin only remembers the secret's name.
 3. Select **Test connection**. On success you see the email address of your Fieldy account; nothing about the key is ever displayed.
-4. Look through the other settings pages: **Sync** (sync window, automatic sync), **Folders and file names**, **Note content**, **Tasks** and **Transcript**. Each setting explains itself, and previews show the result.
+4. Look through the other settings pages: **Sync** (sync window, sync times, automatic sync), **Folders and file names**, **Note content**, **Tasks**, **Transcript**, **People** and **Privacy**. Each setting explains itself, and previews show the result.
 5. Run **Fieldy Sync: Sync now** or select the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/refresh-cw.svg" width="16" height="16" alt="Sync"> ribbon icon. For older history, use **Fieldy Sync: Import conversations**.
 
 Then open the panel with the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/messages-square.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) walks through it.
@@ -65,7 +65,8 @@ Then open the panel with the <img src="https://raw.githubusercontent.com/jeromea
 - **The panel.** The **Conversations** tab has search, icon filters, copy and insert of any piece, and create, refresh or restore of a note. The **Tasks** tab has open, done and dismissed tasks you can change in Fieldy, insertable as Obsidian Tasks items. The **Account** tab has connection, export, speaker profiles and memory templates. → [The Fieldy panel](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#the-fieldy-panel)
 - **Dashboards.** `show: conversations`, `tasks` or `stats` in a `fieldy` block, by period, speaker or kind, plus Dataview queries. → [Dashboards](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#dashboards-fieldy-blocks)
 - **Your edits.** Edit inside the section and the note is kept as you wrote it; restore the Fieldy version whenever you like, keeping your edits below it or not. → [Edited notes](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#edited-notes)
-- **Changes in Fieldy.** The plugin only reads from Fieldy, except the task changes you click in the Tasks tab and the optional "Mark ticked tasks as completed in Fieldy". → [What the plugin changes in Fieldy](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md#what-the-plugin-changes-in-fieldy)
+- **Privacy.** Conversations matching your filters (keywords, speakers, places, templates, times) get no note, and the panel shows only that they exist. → [Privacy filters](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md#privacy-filters)
+- **Changes in Fieldy.** The plugin only reads from Fieldy, except the task changes you click in the Tasks tab, the optional "Mark ticked tasks as completed in Fieldy", the share link switch on a card, and a share link for each new note (on by default; share links are public). → [What the plugin changes in Fieldy](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md#what-the-plugin-changes-in-fieldy)
 
 ## Privacy and security
 
@@ -75,6 +76,8 @@ Then open the panel with the <img src="https://raw.githubusercontent.com/jeromea
 - **Untrusted content:** text from Fieldy is sanitised before it is written. HTML, Obsidian comments, wikilink and image embeds (which could pull in vault files or load remote images), `obsidian://` URIs and script links are neutralised, and file names can never point outside the vault.
 - **Diagnostics** contain versions, settings (without the secret's name or your privacy filter entries), counts and error categories only, never error messages, note paths or conversation titles.
 - **Vault-only:** all file access goes through Obsidian's Vault and FileManager APIs, inside your vault. `fieldy` blocks read your notes only.
+- **Privacy filters** are applied in Obsidian only: they are never sent anywhere, and transcript checks keep only whether a conversation matched, not its text. They are not a security feature: they only decide what gets a note and what some views show. Everything stays in your Fieldy account, and anyone with your API key can read all of it.
+- **Share links** can be turned off completely (**Use Fieldy share links**): the plugin then never asks Fieldy about them, never creates one and shows none.
 - **Links you open:** "Open in Google Maps" and "Open in OpenStreetMap" (on a conversation's location icon) and "Open the share link" open your browser at that address, only when you click them. The plugin itself sends nothing to those sites.
 
 ## Roadmap
@@ -108,12 +111,13 @@ src/
   main.ts            plugin lifecycle, commands, scheduling
   api/               typed Fieldy client, transport, rate limiter, retry, validation
   sync/              sync engine, sync index, vault adapter, fingerprints
+  privacy/           privacy filters and the transcript check cache
   markdown/          note and transcript rendering, managed section, sanitising, fieldy block queries
   export/            export formats (Markdown, JSON, CSV, text)
   settings/          settings model and settings pages
-  ui/                note banners, fieldy blocks, import, export and edited-notes dialogs, status bar
+  ui/                note banners, fieldy blocks, import, export, edited and private notes dialogs, status bar
   ui/panel/          side panel: status, conversations, tasks, account
-  utils/             errors, paths, dates, hashing, logging, redaction
+  utils/             errors, paths, dates, time rules, hashing, logging, redaction
 tests/               Vitest unit tests (mocked network) and opt-in live tests
 docs/guide.md        user guide
 docs/reference.md    settings, commands, sync behaviour, troubleshooting

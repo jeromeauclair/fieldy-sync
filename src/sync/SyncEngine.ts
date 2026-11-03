@@ -1,5 +1,5 @@
 import type { FieldyClient } from '../api/FieldyClient';
-import type { FieldyConversation, FieldyTask, FieldyTranscriptSegment, TimeRange } from '../api/types';
+import type { FieldyConversation, FieldySharable, FieldyTask, FieldyTranscriptSegment, TimeRange } from '../api/types';
 import type { PrivacyGuard, SettledVerdict } from '../privacy/PrivacyGuard';
 import { describeMatches } from '../privacy/privacy';
 import {
@@ -33,7 +33,7 @@ import {
 import { safeId } from '../markdown/sanitize';
 import { DEFAULT_PEOPLE_FOLDER, EMPTY_PEOPLE_INDEX, linkable, personKey, resolveSpeakerLinks, type PeopleIndex } from '../markdown/speakerLinks';
 import { speakerName } from '../markdown/TranscriptRenderer';
-import { taskStatusesFor, type FieldySyncSettings } from '../settings/settings';
+import { shareLinkFields, taskStatusesFor, type FieldySyncSettings } from '../settings/settings';
 import { daysBefore, type DateFormatter } from '../utils/dates';
 import { FieldyError, isCancellation, toFieldyError } from '../utils/errors';
 import { silentLogger, type Logger } from '../utils/logger';
@@ -52,6 +52,7 @@ export type FieldyApi = Pick<
 	| 'listSpeakerProfiles'
 	| 'listMemoryTemplates'
 	| 'listSharables'
+	| 'createSharable'
 	| 'completeTask'
 >;
 
@@ -99,6 +100,10 @@ interface SyncEngineDeps {
 	logger?: Logger;
 	/** Privacy filters; without it, every conversation is public. */
 	privacy?: PrivacyGuard;
+	/** Told the author name of share links seen in Fieldy (to prefill the setting). */
+	onShareAuthor?: (name: string) => void;
+	/** Author name when the setting is empty: from the Fieldy account (its email name). */
+	shareAuthorFallback?: () => Promise<string | null>;
 }
 
 export class SyncAlreadyRunningError extends FieldyError {
@@ -214,6 +219,8 @@ class SyncRun {
 	private people: PeopleIndex | null = null;
 	/** Transcripts already read for the privacy check, reused when rendering. */
 	private readonly transcripts = new Map<string, FieldyTranscriptSegment[]>();
+	/** Share links already read (or just created) for a new note, reused when rendering. */
+	private readonly shareLinks = new Map<string, FieldySharable[]>();
 
 	constructor(
 		private readonly deps: SyncEngineDeps,
@@ -221,7 +228,9 @@ class SyncRun {
 		private readonly signal: AbortSignal,
 		private readonly onProgress: ((progress: SyncProgress) => void) | null,
 	) {
-		this.settings = { ...deps.settings() };
+		const settings = deps.settings();
+		// "Use Fieldy share links" off: no share link request of any kind.
+		this.settings = settings.useShareLinks ? { ...settings } : { ...settings, includeShareLinks: false, createShareLinks: false };
 		this.logger = deps.logger ?? silentLogger;
 		this.now = deps.now ?? (() => Date.now());
 		this.renderKey = renderKey(this.settings);
@@ -392,23 +401,21 @@ class SyncRun {
 		const existing = pickPrimary(refs, record);
 		const verdict = await this.privacyOf(conversation, existing !== undefined || this.wouldCreate(conversation, record));
 		if (verdict?.state === 'private') {
-			await this.keepPrivate(conversation, existing ? refs : [], record, describeMatches(verdict.matches));
+			await this.keepPrivate(conversation, refs, record, describeMatches(verdict.matches));
 			return;
 		}
 		// Unknown (null) only when nothing would be written anyway: the usual skips below apply.
 		if (this.settings.linkSpeakers && this.settings.createSpeakerNotes && !conversation.locked) {
-			const primary = pickPrimary(refs, record);
-			const willHaveNote = primary ? !isSyncPaused(primary.frontmatter) : !record && (this.request.createNew ?? this.settings.importNewOnSync);
+			const willHaveNote = existing ? !isSyncPaused(existing.frontmatter) : !record && (this.request.createNew ?? this.settings.importNewOnSync);
 			if (willHaveNote) await this.ensurePeopleNotes(conversation.speakers);
 		}
 		const source = this.fingerprint(conversation, tasks);
 		if (refs.length > 1) {
 			this.counts.duplicates++;
-			this.logger.warn(`Found ${refs.length} notes for Fieldy conversation ${conversation.id}; updating ${pickPrimary(refs, record)?.path ?? ''} only.`);
+			this.logger.warn(`Found ${refs.length} notes for Fieldy conversation ${conversation.id}; updating ${existing?.path ?? ''} only.`);
 		}
-		const ref = pickPrimary(refs, record);
-		if (!ref) await this.handleMissing(conversation, record, tasks, source);
-		else await this.handleExisting(conversation, ref, record, tasks, source);
+		if (!existing) await this.handleMissing(conversation, record, tasks, source);
+		else await this.handleExisting(conversation, existing, record, tasks, source);
 	}
 
 	private async handleMissing(conversation: FieldyConversation, record: SyncRecord | undefined, tasks: FieldyTask[], source: string): Promise<void> {
@@ -570,6 +577,7 @@ class SyncRun {
 			s.filenameDateFormat,
 			fmt,
 		);
+		if (s.createShareLinks) await this.ensureShareLink(conversation);
 		const input = await this.renderInput(conversation, tasks, undefined);
 		const inner = renderConversationBody(input, s, fmt);
 		const frontmatter = {
@@ -594,6 +602,38 @@ class SyncRun {
 		this.upsert(conversation, path, undefined, { status: 'synced', sourceHash: source, contentHash: hashBlock(inner) });
 		this.counts.created++;
 		this.createdIds.push(conversation.id);
+	}
+
+	/**
+	 * "Create a share link for new notes": gives the conversation a Fieldy
+	 * share link unless it has one (enabled or not: a link the user turned off
+	 * stays off). A failure never stops the note from being created.
+	 */
+	private async ensureShareLink(conversation: FieldyConversation): Promise<void> {
+		try {
+			const author = this.settings.shareLinkAuthor.trim() || ((await this.deps.shareAuthorFallback?.()) ?? '');
+			if (!author) {
+				this.counts.shareLinksNoAuthor++;
+				return;
+			}
+			const existing = await this.deps.client.listSharables(conversation.id, { signal: this.signal });
+			const seen = existing.find((l) => l.authorName.trim() !== '')?.authorName;
+			if (seen) this.deps.onShareAuthor?.(seen);
+			if (existing.length > 0) {
+				this.shareLinks.set(conversation.id, existing);
+				return;
+			}
+			const created = await this.deps.client.createSharable(
+				{ conversationId: conversation.id, authorName: author, sharedFields: shareLinkFields(this.settings) },
+				{ signal: this.signal },
+			);
+			this.shareLinks.set(conversation.id, [created]);
+			this.counts.shareLinksCreated++;
+		} catch (err) {
+			if (isCancellation(err)) throw err;
+			this.counts.shareLinksFailed++;
+			this.logger.warn(`Could not create a share link for conversation ${conversation.id}`, err);
+		}
 	}
 
 	private upsert(conversation: FieldyConversation, path: string, record: SyncRecord | undefined, changes: Partial<SyncRecord>): void {
@@ -721,7 +761,9 @@ class SyncRun {
 				);
 		const speakerNames = transcript?.some((seg) => seg.speakerProfileId) ? await this.speakerNames() : new Map<string, string>();
 		const templateName = conversation.templateId ? ((await this.templates()).get(conversation.templateId) ?? null) : null;
-		const shareLinks = s.includeShareLinks ? await this.deps.client.listSharables(conversation.id, { signal: this.signal }) : [];
+		const knownLinks = this.shareLinks.get(conversation.id);
+		this.shareLinks.delete(conversation.id);
+		const shareLinks = !s.includeShareLinks ? [] : (knownLinks ?? (await this.deps.client.listSharables(conversation.id, { signal: this.signal })));
 		const transcriptNames = s.linkTranscriptSpeakers && transcript ? transcript.map((seg) => speakerName(seg, speakerNames)) : [];
 		const speakerLinks = resolveSpeakerLinks([...conversation.speakers, ...transcriptNames], this.peopleIndex());
 		return { conversation, tasks, transcript, speakerNames, templateName, shareLinks, localTaskStates, speakerLinks };

@@ -127,6 +127,15 @@ export interface FieldySharable {
 	sharedFields: string[];
 }
 
+/** What `POST /sharables` needs. */
+export interface CreateSharableParams {
+	conversationId: string;
+	/** Shown to whoever opens the link. */
+	authorName: string;
+	/** Fieldy field names, as its app uses them: title, startTime, endTime, summary, quotes, transcriptions, keywords. */
+	sharedFields: readonly string[];
+}
+
 export interface Page<T> {
 	items: T[];
 	nextCursor: string | null;

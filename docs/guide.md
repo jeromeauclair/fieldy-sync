@@ -43,11 +43,11 @@ Before these, a grey icon shows where it was recorded: the Fieldy wearable <img 
 
 **Card icons are buttons.** Click one to copy what it stands for: the summary, full memory content, tasks, quotes, share link, location or calendar event (<img src="icons/zap.svg" width="16" height="16" alt="Brief"> copies the overview). Right-click it to insert it into the note you are editing instead, open the location in Google Maps or OpenStreetMap, or open the share link. While the [Tasks](https://publish.obsidian.md/tasks/) plugin is enabled, tasks and the calendar event are copied as Tasks items written with your Tasks settings (the event is scheduled ⏳ on its day); the right-click menu also offers this plugin's own format.
 
-**Filters.** Under the search box, one button per icon filters the list: click once for "only with it", again for "only without it", a third time for "any". The recording sources follow (one at a time). The <img src="icons/filter.svg" width="16" height="16" alt="Filters"> button next to the search box opens more filters: date, time of day, speaker, location and note status. Filters apply to the loaded conversations.
+**Filters.** Under the search box, one button per icon filters the list: click once for "only with it", again for "only without it", a third time for "any". The recording sources follow (one at a time), then, while [privacy filters](#privacy-filters) are set, the <img src="icons/lock.svg" width="16" height="16" alt="Private conversations"> private conversations. The <img src="icons/filter.svg" width="16" height="16" alt="Filters"> button next to the search box opens more filters: date, time of day, speaker, location and note status. Filters apply to the loaded conversations.
 
 **Note status.** The label shows whether the conversation has a note (In vault, Not imported, Edited, Paused, Deleted from vault, Locked). It has a solid border when the last sync created the note and a dashed one when it updated it. Click it to open the note.
 
-**Expand a card** to read its details, summary, tasks and quotes, and load its transcript on demand (and hide it again). For an edited note, it shows the Fieldy version next to yours. A card stays open while you search or filter, and after syncs.
+**Expand a card** to read its details, summary, tasks and quotes, and load its transcript on demand (and hide it again). Its **Share link** switch turns the conversation's Fieldy share link on (creating it if needed) or off, and shows the link with a copy button while it is on. Share links are public: anyone with the URL can read what they share. For an edited note, it shows the Fieldy version next to yours. A card stays open while you search or filter, and after syncs.
 
 The buttons on each card:
 
@@ -59,7 +59,7 @@ The buttons on each card:
 
 ### Tasks
 
-All your Fieldy tasks, searchable. The icons under the search box filter by status, each with its count: open <img src="icons/circle.svg" width="16" height="16" alt="Open">, completed <img src="icons/circle-check.svg" width="16" height="16" alt="Completed"> and dismissed <img src="icons/circle-slash.svg" width="16" height="16" alt="Dismissed">. Like the Conversations filters, click once for "only these", again to hide them, a third time for "any". The tab starts with open tasks only; with all three on "any", it shows every task. The next icons choose how to group them: by due date <img src="icons/calendar-clock.svg" width="16" height="16" alt="By due date"> (overdue, today, next 7 days, later, no date), by conversation <img src="icons/messages-square.svg" width="16" height="16" alt="By conversation">, or not at all <img src="icons/list.svg" width="16" height="16" alt="No grouping">. Each task shows its due date and the conversation it came from.
+All your Fieldy tasks, searchable. The icons under the search box filter by status, each with its count: open <img src="icons/circle.svg" width="16" height="16" alt="Open">, completed <img src="icons/circle-check.svg" width="16" height="16" alt="Completed"> and dismissed <img src="icons/circle-slash.svg" width="16" height="16" alt="Dismissed">. Like the Conversations filters, click once for "only these", again to hide them, a third time for "any". The tab starts with open tasks only; with all three on "any", it shows every task. The next icons choose how to group them: by due date <img src="icons/calendar-clock.svg" width="16" height="16" alt="By due date"> (overdue, today, next 7 days, later, no date), by conversation <img src="icons/messages-square.svg" width="16" height="16" alt="By conversation">, or not at all <img src="icons/list.svg" width="16" height="16" alt="No grouping">. Each task shows its due date and the conversation it came from. Tasks of [private conversations](#privacy-filters) are hidden, and the tab says how many.
 
 ![The Tasks tab](images/tasks-tab.png)
 
@@ -82,6 +82,7 @@ In Live Preview and reading view, the Fieldy section's markers are shown as two 
 | **Synced** (blue) | Kept up to date from Fieldy. |
 | **Edited** (orange) | You changed the section, so sync leaves it as you wrote it. It changes the moment you type inside the section. |
 | **Paused** (grey) | The note has `fieldy_sync: false`, so it is never updated. |
+| **Private** (grey) | A [privacy filter](#privacy-filters) matches the conversation, so the note is no longer updated. |
 
 The banners are display only: the file still contains the plain markers, visible in source mode and in other apps. To edit a marker line, put the cursor on it with the keyboard or mouse and it shows as text. Turn banners off with **Section banner**, and pick your own colours for light and dark mode with **Banner colours** (both on the Note content settings page).
 
@@ -186,6 +187,9 @@ When you edit inside a note's Fieldy section, the note becomes your edited versi
 If you undo your edits yourself, the note goes back to receiving updates on its own. To freeze a note without editing it, set `fieldy_sync: false` in its properties.
 
 ## Privacy filters
+
+> [!warning] Not a security feature
+> Privacy filters are not a security feature, and no real privacy should be expected from them. They are a filter: matching conversations get no note and some views of this plugin hide them. Everything stays in your Fieldy account, private conversations included, and anyone with your API key (or your Fieldy login) can read all of it, through Fieldy or any other tool. Other Obsidian plugins can also read secrets stored in Obsidian.
 
 Some conversations do not belong in your vault: a doctor's appointment, a salary talk, a private call. **Settings → Privacy** lists what makes a conversation private, one entry per line:
 

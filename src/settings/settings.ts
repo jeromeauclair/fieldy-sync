@@ -41,6 +41,17 @@ export interface FieldySyncSettings {
 	pushTaskCompletion: boolean;
 	includeTranscript: boolean;
 	includeShareLinks: boolean;
+	/**
+	 * Master switch for Fieldy share links. Off: the plugin never lists,
+	 * checks, creates or changes share links, and shows none (local first).
+	 */
+	useShareLinks: boolean;
+	/** Create a Fieldy share link, when there is none, for every conversation that gets a new note. */
+	createShareLinks: boolean;
+	/** Shown on share links the plugin creates; required by Fieldy. */
+	shareLinkAuthor: string;
+	/** Share links the plugin creates include the transcript. */
+	shareLinkTranscript: boolean;
 	/** Show the Fieldy section's markers as a status banner and divider (display only). */
 	showNoteBanner: boolean;
 	/** Banner colours: the theme's (blue, orange, grey) or the three below. */
@@ -133,6 +144,10 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	pushTaskCompletion: false,
 	includeTranscript: true,
 	includeShareLinks: false,
+	useShareLinks: true,
+	createShareLinks: true,
+	shareLinkAuthor: '',
+	shareLinkTranscript: true,
 	showNoteBanner: true,
 	bannerColors: 'theme',
 	bannerColorSynced: '#086ddd',
@@ -201,6 +216,19 @@ export const AUTO_SYNC_OPTIONS: Record<string, string> = {
 	'1440': 'Once a day',
 };
 
+/** The part of an email before the @ (and before any +tag): the fallback author name of share links. */
+export function emailName(email: string): string | null {
+	const local = email.split('@')[0]?.split('+')[0]?.trim() ?? '';
+	return local || null;
+}
+
+/** Fields of a share link the plugin creates, the same as the Fieldy app's own links. */
+export function shareLinkFields(settings: Pick<FieldySyncSettings, 'shareLinkTranscript'>): string[] {
+	const fields = ['title', 'startTime', 'endTime', 'summary', 'quotes', 'keywords'];
+	if (settings.shareLinkTranscript) fields.push('transcriptions');
+	return fields;
+}
+
 /** Statuses requested from `GET /tasks` for the current settings. */
 export function taskStatusesFor(settings: FieldySyncSettings): TaskStatus[] {
 	if (!settings.includeTasks) return [];
@@ -266,6 +294,10 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		pushTaskCompletion: bool(s.pushTaskCompletion, d.pushTaskCompletion),
 		includeTranscript: bool(s.includeTranscript, d.includeTranscript),
 		includeShareLinks: bool(s.includeShareLinks, d.includeShareLinks),
+		useShareLinks: bool(s.useShareLinks, d.useShareLinks),
+		createShareLinks: bool(s.createShareLinks, d.createShareLinks),
+		shareLinkAuthor: text(s.shareLinkAuthor, d.shareLinkAuthor, 100).trim(),
+		shareLinkTranscript: bool(s.shareLinkTranscript, d.shareLinkTranscript),
 		showNoteBanner: bool(s.showNoteBanner, d.showNoteBanner),
 		bannerColors: pick(s.bannerColors, ['theme', 'custom'] as const, d.bannerColors),
 		bannerColorSynced: hex(s.bannerColorSynced, d.bannerColorSynced),

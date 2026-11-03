@@ -95,7 +95,7 @@ Some data would cost one extra request per conversation on every sync, so it is 
 
 - transcript corrections Fieldy makes without changing the conversation itself;
 - renamed speaker profiles and memory templates;
-- share links (when **Share links** is on).
+- share links (when **List share links in notes** is on).
 
 To refresh one note right away, use **Refresh current note from Fieldy**, or the <img src="icons/refresh-cw.svg" width="16" height="16" alt="Refresh"> button on its banner or its card in the panel.
 
@@ -119,7 +119,7 @@ An edited note is never overwritten and the original is never lost: the Fieldy v
 | You rename or move a note | It keeps syncing at its new location. |
 | You remove the markers | The whole note becomes your edited version and is left alone. Restoring appends a fresh Fieldy section. |
 | A conversation is locked by your Fieldy plan's history window | Existing notes are never replaced with the locked (redacted) version; locked conversations are not imported. |
-| A conversation is deleted in Fieldy | Its note is kept. The plugin never deletes notes. |
+| A conversation is deleted in Fieldy | Its note is kept. The plugin never deletes notes, except, if you turn it on, those of private conversations. |
 | A conversation matches a [privacy filter](guide.md#privacy-filters) | No note is created. A note imported before the filter is kept as it is, no longer updated, and its banner says *Private* (or moved to the trash, with **Move notes of private conversations to the trash**). Restoring the Fieldy version of such a note is refused. |
 | One conversation fails (network, vault write…) | The rest of the sync continues; the summary lists the failure, and the next sync retries it. |
 | The destination folder exists with different capitalisation (`fieldy` vs `Fieldy`) | The existing folder is used. |
@@ -135,9 +135,11 @@ Fieldy's API lists conversations by start time, so each sync checks conversation
 Nothing, unless you ask:
 
 - **Tasks tab:** ticking, reopening, editing the title or due date, and cancelling a task are sent to Fieldy when you click.
+- **Share link switch** on an expanded card: creates the conversation's share link, or turns it on or off, when you click.
 - **Mark ticked tasks as completed in Fieldy** (off by default): a task you tick in a note is marked completed in Fieldy on the next sync.
+- **Create a share link for new notes** (on by default): when a note is created, the conversation gets a Fieldy share link if it has none. Share links are public: anyone with the URL can read what they share. A link you turned off in Fieldy stays off.
 
-It never deletes tasks, never edits conversations, speakers or templates, and never creates share links.
+It never deletes tasks or share links, and never edits conversations, speakers or templates.
 
 ## Settings
 
@@ -180,10 +182,13 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Summary | On | Fieldy's summary. |
 | Full memory content | On | The write-up made with your Fieldy memory template, when it says more than the summary (under "Details"). |
 | Quotes | On | Notable quotes with their context. |
-| Transcript | On | One extra request per new or changed conversation. |
-| Share links | Off | Existing share links (one extra request per updated note). |
+| Use Fieldy share links | On | Off: the plugin never lists, checks, creates or changes share links, and shows none (local first). The share link settings below and the card switch disappear. |
+| List share links in notes | Off | Adds a "Share links" section with the conversation's links to its note (one extra request per updated note). |
+| Create a share link for new notes | On | Creates the conversation's public Fieldy share link, if it has none, when sync or an import creates its note. One or two requests per new note. Private conversations never get one. |
+| Author name on share links | (none) | Required by Fieldy and shown on every link the plugin creates (for new notes or with a card's switch). Filled in from a share link made in the Fieldy app once the plugin sees one. Empty: the name of your Fieldy account's email (before the @) is used, and appears publicly on new links. |
+| Share the transcript | On | Links the plugin creates also share the transcript. Off: the title, date, summary, quotes and keywords only. |
 | Section banner | On | Shows the section's markers as [banners](guide.md#note-banners) in Live Preview and reading view. Display only. |
-| Banner colours | Theme | The theme's blue, orange and grey, or your own colours for synced, edited and paused sections, separately for light and dark mode. |
+| Banner colours | Theme | The theme's blue, orange and grey, or your own colours for synced, edited and paused or private sections, separately for light and dark mode. |
 
 ### Tasks
 
@@ -199,6 +204,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 
 | Setting | Default | Description |
 | --- | --- | --- |
+| Transcript | On | Adds the transcript to notes. One extra request per new or changed conversation. The options below apply while it is on. |
 | Transcript format | Timestamped, with speakers | Or timestamped segments, or readable paragraphs. Speaker profile names are used where Fieldy links them. |
 | Transcript timestamps | Time of day | Or time since the start of the conversation. |
 | Collapse transcript | Off | Puts the transcript in a collapsed callout. |
@@ -225,7 +231,9 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 
 ### Privacy
 
-One entry per line (or separated by commas). Case and accents are ignored. See [Privacy filters](guide.md#privacy-filters).
+**Not a security feature:** privacy filters only keep conversations out of your vault and hide them in some views. Anyone with your API key can still read everything in your Fieldy account. See [Privacy filters](guide.md#privacy-filters).
+
+One entry per line (or separated by commas). Case and accents are ignored.
 
 | Setting | Default | Description |
 | --- | --- | --- |
@@ -298,7 +306,7 @@ All commands start with `Fieldy Sync:` in the command palette. No hotkeys are as
 
 Fieldy allows **100 requests per 60 seconds** per API key. All requests go through one shared limiter (60 per minute by default). On a `429` response the plugin pauses every request for Fieldy's cooldown (60 seconds, or the server's `Retry-After`) before retrying.
 
-A sync costs one request per 50 conversations listed, one to seven for tasks (one per task status: open and approved, plus completed and the four dismissed statuses when those are included), and one transcript request per new or changed conversation. With **Also search transcripts** on, each conversation's transcript is also read once for the privacy check (reused for the note, then remembered). A first import of several hundred conversations takes a few minutes, with progress in the status bar. Syncs never overlap; a scheduled sync is skipped while another one runs.
+A sync costs one request per 50 conversations listed, one to seven for tasks (one per task status: open and approved, plus completed and the four dismissed statuses when those are included), and one transcript request per new or changed conversation. **Create a share link for new notes** adds one or two requests per new note. With **Also search transcripts** on, each conversation's transcript is also read once for the privacy check (reused for the note, then remembered). A first import of several hundred conversations takes a few minutes, with progress in the status bar. Syncs never overlap; a scheduled sync is skipped while another one runs.
 
 The panel stays light on long histories: it draws 100 cards at a time, checks share links only for cards you see, and looks up recording sources once per loaded period. An export with transcripts costs one request per conversation, so the dialog shows the time left.
 
@@ -311,9 +319,10 @@ The panel stays light on long histories: it draws 100 cards at a time, checks sh
 | "Fieldy's rate limit was reached" | Another tool may be using the same key. Wait a minute; scheduled syncs back off on their own. Lower the request budget if it keeps happening. |
 | "Could not reach Fieldy" or timeouts | Check your connection; raise the request timeout on slow networks. |
 | "Fieldy returned a response the plugin could not understand" | The API may have changed. Please open an issue with the copied diagnostics. |
-| A note is not updating | Its banner tells you why: *Edited* (you changed the section; see **Review edited notes**) or *Paused* (`fieldy_sync: false`). Otherwise it may be outside the sync window or locked by your plan. |
+| A note is not updating | Its banner tells you why: *Edited* (you changed the section; see **Review edited notes**), *Paused* (`fieldy_sync: false`) or *Private* (a privacy filter matches). Otherwise it may be outside the sync window or your sync times, or locked by your plan. |
 | The banner does not appear | It shows in Live Preview and reading view, not in source mode, and only when both markers are present once each. Check **Section banner** under Note content. |
 | A note I deleted came back | **Re-create deleted notes** is on, or the sync state was reset. |
+| A conversation is missing from my notes but shows in the panel | It may be private (its card says which filter), outside your sync times, or outside the sync window: import it, or check **Privacy** and **Sync**. |
 | Old conversations are missing | Use **Import conversations** with a larger range. Conversations outside your plan's history window are locked by Fieldy. |
 | A `fieldy` block is empty | It reads your Fieldy notes only: import the period first, or widen `period` (tasks default to all time, conversations to the last 7 days). A message above the block points out options it did not understand. |
 | Dataview does not sort Fieldy tasks by due date | Turn on **Due dates as Dataview fields** (Tasks page); notes update at their next sync, or refresh them. |
@@ -324,7 +333,9 @@ The panel stays light on long histories: it draws 100 cards at a time, checks sh
 
 **Can I rename or move notes?** Yes. Notes are tracked by `fieldy_id`, not by path.
 
-**Does the plugin delete anything?** No. It never deletes notes, and it never deletes or edits anything in Fieldy except the task changes you make yourself (see [What the plugin changes in Fieldy](#what-the-plugin-changes-in-fieldy)).
+**Does the plugin create anything in Fieldy?** Only share links: one per new note, if the conversation has none, while **Create a share link for new notes** is on (the default), or when you use the share link switch on a card. Turn it off on the Note content page.
+
+**Does the plugin delete anything?** Not unless you ask. It deletes notes only if you turn on **Move notes of private conversations to the trash** (off by default), and then only to the trash. It never deletes or edits anything in Fieldy except the task changes you make yourself (see [What the plugin changes in Fieldy](#what-the-plugin-changes-in-fieldy)).
 
 **Can speakers be identified from Obsidian?** Not yet. Fieldy's API reports speaker profiles but cannot assign them. Local speaker mapping is on the [roadmap](../ROADMAP.md).
 

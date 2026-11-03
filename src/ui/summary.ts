@@ -15,6 +15,7 @@ export function formatSyncSummary(summary: SyncRunSummary): string {
 	if (c.unchanged > 0) parts.push(`${c.unchanged} unchanged`);
 	if (c.tasksPushed > 0) parts.push(plural(c.tasksPushed, 'task') + ' completed in Fieldy');
 	if (c.peopleCreated > 0) parts.push(plural(c.peopleCreated, 'people note') + ' created');
+	if (c.shareLinksCreated > 0) parts.push(plural(c.shareLinksCreated, 'share link') + ' created in Fieldy');
 	const head = summary.cancelled ? 'Fieldy sync cancelled' : 'Fieldy sync complete';
 	let text = parts.length > 0 ? `${head}: ${parts.join(', ')}.` : `${head}: no conversations ${c.scanned === 0 ? 'found in the sync window' : 'needed changes'}.`;
 
@@ -28,6 +29,8 @@ export function formatSyncSummary(summary: SyncRunSummary): string {
 	if (c.skippedPrivate > 0) skipped.push(`${c.skippedPrivate} private`);
 	if (c.skippedSchedule > 0) skipped.push(`${c.skippedSchedule} outside your sync times`);
 	if (skipped.length > 0) text += ` Skipped: ${skipped.join(', ')}.`;
+	if (c.shareLinksNoAuthor > 0) text += ' No share link was created: set an author name in Settings → Note content.';
+	if (c.shareLinksFailed > 0) text += ` ${plural(c.shareLinksFailed, 'share link')} could not be created.`;
 	if (c.duplicates > 0) text += ` ${plural(c.duplicates, 'conversation')} has more than one note.`;
 	if (c.failed > 0) {
 		const first = summary.errors[0];
