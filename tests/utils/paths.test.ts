@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	applyFilenamePattern,
+	isInFolder,
 	joinVaultPath,
 	MAX_BASENAME_LENGTH,
 	parentFolder,
@@ -129,5 +130,22 @@ describe('note paths', () => {
 		expect(joinVaultPath('Fieldy', '', '2026/2026-10', 'a.md')).toBe('Fieldy/2026/2026-10/a.md');
 		expect(parentFolder('Fieldy/2026/a.md')).toBe('Fieldy/2026');
 		expect(parentFolder('a.md')).toBe('');
+	});
+});
+
+describe('isInFolder', () => {
+	it('matches the folder itself and anything below it, ignoring case', () => {
+		expect(isInFolder('Templates/Fieldy.md', 'Templates')).toBe(true);
+		expect(isInFolder('templates/a/b.md', 'Templates')).toBe(true);
+		expect(isInFolder('Archive/Fieldy', 'Archive/Fieldy')).toBe(true);
+	});
+
+	it('does not match a folder that only starts with the same letters', () => {
+		expect(isInFolder('Templates2/a.md', 'Templates')).toBe(false);
+		expect(isInFolder('Fieldy/a.md', 'Archive/Fieldy')).toBe(false);
+	});
+
+	it('treats the vault root as holding everything', () => {
+		expect(isInFolder('a.md', '')).toBe(true);
 	});
 });

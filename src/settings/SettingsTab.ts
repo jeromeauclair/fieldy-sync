@@ -9,7 +9,7 @@ import { DAY_LETTER, DAY_SHORT, describeTimeRule, describeTimeRules, TIME_RULE_O
 import { describeError } from '../utils/errors';
 import { applyFilenamePattern, joinVaultPath, sanitizeFolderPath, subfolderFor } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
-import { AUTO_SYNC_OPTIONS, FIELDY_REFERRAL_URL, ISSUES_URL, SYNC_WINDOW_OPTIONS, type FieldySyncSettings } from './settings';
+import { AUTO_SYNC_OPTIONS, FIELDY_REFERRAL_URL, ignoredFolders, ISSUES_URL, overlappingIgnoredFolders, SYNC_WINDOW_OPTIONS, type FieldySyncSettings } from './settings';
 import { moment } from '../utils/moment';
 
 const SUPPORT_URL = 'https://buymeacoffee.com/jeromeauclair';
@@ -271,6 +271,15 @@ export class FieldySettingsTab extends PluginSettingTab {
 		};
 		hours.addEventListener('change', emit);
 		minutes.addEventListener('change', emit);
+	}
+
+	private ignoredPreview(): string {
+		const s = this.plugin.settings;
+		const active = ignoredFolders(s);
+		const skipped = overlappingIgnoredFolders(s);
+		const lines = [active.length > 0 ? active.map((f) => `${f}/`).join('\n') : 'None.'];
+		if (skipped.length > 0) lines.push(`Not ignored (they hold a folder the plugin writes to): ${skipped.join(', ')}`);
+		return lines.join('\n');
 	}
 
 	private folderPreview(): string {
@@ -586,6 +595,22 @@ export class FieldySettingsTab extends PluginSettingTab {
 								control: { type: 'text', key: 'subfolderFormat', placeholder: 'YYYY/MM' },
 							},
 							this.livePreview('Folder preview', 'A conversation recorded today goes to:', () => this.folderPreview()),
+						],
+					},
+					{
+						type: 'group',
+						heading: 'Ignored folders',
+						items: [
+							{
+								name: 'Folders to ignore',
+								aliases: ['exclude', 'skip', 'archive', 'templates'],
+								desc: help(
+									['One folder per line, with its subfolders. The plugin acts as if notes there did not exist: it doesn\'t look for Fieldy notes or people notes in them, and dashboards and the panel leave them out. Useful for templates, archives or copies.'],
+									['Sync treats a Fieldy note in an ignored folder like a deleted note: it is no longer updated, and not created again unless "Re-create notes you deleted" is on. A folder that holds the folder for new notes, or the people folder while speaker links are on, can\'t be ignored.'],
+								),
+								control: { type: 'textarea', key: 'ignoredFolders', placeholder: 'Templates\nArchive/Fieldy', rows: 3 },
+							},
+							this.livePreview('Ignored now', 'Folders the plugin leaves out:', () => this.ignoredPreview(), true),
 						],
 					},
 					{

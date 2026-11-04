@@ -3,6 +3,7 @@ import { ID_KEY } from '../markdown/ConversationRenderer';
 import { metaFromYaml, setMetaInYaml, type BlockMeta, type NoteContent, type WrittenNote } from '../markdown/managedBlock';
 import { buildPeopleIndex, type PersonNote, type PeopleIndex } from '../markdown/speakerLinks';
 import { FieldyError } from '../utils/errors';
+import { isInFolder } from '../utils/paths';
 import type { NoteRef, NoteStore } from './NoteStore';
 
 /**
@@ -13,7 +14,18 @@ import type { NoteRef, NoteStore } from './NoteStore';
 export class ObsidianNoteStore implements NoteStore {
 	private taken = new Set<string>();
 
-	constructor(private readonly app: App) {}
+	/** `ignored`: folders whose notes the plugin acts as if they did not exist. */
+	constructor(
+		private readonly app: App,
+		private readonly ignored: () => readonly string[] = () => [],
+	) {}
+
+	/** Markdown files outside the ignored folders. */
+	private markdownFiles(): TFile[] {
+		const ignored = this.ignored();
+		const files = this.app.vault.getMarkdownFiles();
+		return ignored.length === 0 ? files : files.filter((f) => !ignored.some((folder) => isInFolder(f.path, folder)));
+	}
 
 	private file(path: string): TFile {
 		const file = this.app.vault.getFileByPath(normalizePath(path));
@@ -37,7 +49,7 @@ export class ObsidianNoteStore implements NoteStore {
 	async indexByFieldyId(): Promise<Map<string, NoteRef[]>> {
 		this.taken = new Set(this.app.vault.getAllLoadedFiles().map((f) => f.path.toLowerCase()));
 		const index = new Map<string, NoteRef[]>();
-		for (const file of this.app.vault.getMarkdownFiles()) {
+		for (const file of this.markdownFiles()) {
 			const cache = this.app.metadataCache.getFileCache(file);
 			const frontmatter: Record<string, unknown> | null = cache ? (cache.frontmatter ?? null) : await this.readFrontmatter(file);
 			const rawId = frontmatter?.[ID_KEY];
@@ -52,7 +64,7 @@ export class ObsidianNoteStore implements NoteStore {
 	}
 
 	peopleIndex(folder: string): PeopleIndex {
-		const files = this.app.vault.getMarkdownFiles();
+		const files = this.markdownFiles();
 		const prefix = folder ? `${normalizePath(folder)}/`.toLowerCase() : '';
 		const people: PersonNote[] = [];
 		for (const file of files) {

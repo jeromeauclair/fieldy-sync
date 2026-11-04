@@ -13,7 +13,9 @@ import {
 	type TaskRecord,
 } from '../markdown/fieldyQuery';
 import type FieldySyncPlugin from '../main';
+import { ignoredFolders } from '../settings/settings';
 import { formatDuration } from '../utils/dates';
+import { isInFolder } from '../utils/paths';
 import { blockLayout } from './bannerModel';
 import { moment } from '../utils/moment';
 
@@ -24,7 +26,7 @@ import { moment } from '../utils/moment';
  */
 export function registerFieldyBlock(plugin: FieldySyncPlugin): void {
 	plugin.registerMarkdownCodeBlockProcessor('fieldy', (source, el, ctx) => {
-		ctx.addChild(new FieldyBlock(plugin.app, source, el, ctx.sourcePath));
+		ctx.addChild(new FieldyBlock(plugin.app, source, el, ctx.sourcePath, () => ignoredFolders(plugin.settings)));
 	});
 }
 
@@ -48,10 +50,11 @@ function conversationRecord(app: App, file: TFile, fm: FrontMatterCache): Conver
 	};
 }
 
-/** Every Fieldy note in the vault, from the metadata cache (no file reads). */
-function fieldyNotes(app: App): ConversationRecord[] {
+/** Every Fieldy note in the vault outside the ignored folders, from the metadata cache (no file reads). */
+function fieldyNotes(app: App, ignored: readonly string[]): ConversationRecord[] {
 	const records: ConversationRecord[] = [];
 	for (const file of app.vault.getMarkdownFiles()) {
+		if (ignored.some((folder) => isInFolder(file.path, folder))) continue;
 		const fm = app.metadataCache.getFileCache(file)?.frontmatter;
 		if (fm?.[ID_KEY] === undefined) continue;
 		records.push(conversationRecord(app, file, fm));
@@ -83,6 +86,7 @@ class FieldyBlock extends MarkdownRenderChild {
 		private readonly source: string,
 		containerEl: HTMLElement,
 		private readonly sourcePath: string,
+		private readonly ignored: () => readonly string[],
 	) {
 		super(containerEl);
 	}
@@ -99,7 +103,7 @@ class FieldyBlock extends MarkdownRenderChild {
 	private async render(): Promise<void> {
 		const generation = ++this.generation;
 		const query = parseFieldyQuery(this.source, Date.now());
-		const conversations = selectConversations(fieldyNotes(this.app), query);
+		const conversations = selectConversations(fieldyNotes(this.app, this.ignored()), query);
 		const tasks = query.show === 'conversations' ? [] : await tasksOf(this.app, conversations);
 		if (generation !== this.generation) return;
 

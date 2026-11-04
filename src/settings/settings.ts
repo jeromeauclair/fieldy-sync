@@ -1,6 +1,6 @@
 import { RECORDING_SOURCES, type RecordingSource, type TaskStatus } from '../api/types';
 import { MAX_REQUESTS_PER_MINUTE } from '../api/rateLimiter';
-import { sanitizeFolderPath } from '../utils/paths';
+import { isInFolder, sanitizeFolderPath } from '../utils/paths';
 import { sanitizeTimeRules, type TimeRule } from '../utils/timeRules';
 
 export type TranscriptFormat = 'paragraphs' | 'timestamped' | 'timestamped-speaker';
@@ -38,6 +38,8 @@ export interface FieldySyncSettings {
 	subfolders: SubfolderMode;
 	/** Moment format for `custom` subfolders; "/" separates folders. */
 	subfolderFormat: string;
+	/** Folders the plugin acts as if they did not exist, one per line (see `ignoredFolders`). */
+	ignoredFolders: string;
 	importNewOnSync: boolean;
 	syncWindowDays: number;
 	recordingSource: RecordingSourceFilter;
@@ -147,6 +149,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	folder: 'Fieldy',
 	subfolders: 'none',
 	subfolderFormat: 'YYYY/MM',
+	ignoredFolders: '',
 	importNewOnSync: true,
 	syncWindowDays: 7,
 	recordingSource: 'all',
@@ -240,6 +243,31 @@ export const AUTO_SYNC_OPTIONS: Record<string, string> = {
 };
 
 /** The part of an email before the @ (and before any +tag): the fallback author name of share links. */
+/**
+ * The ignored folders in effect: one per line, cleaned up. A folder that holds
+ * the folder for new notes (or the people folder, while speaker links are on)
+ * is left out: the plugin would lose track of the notes it writes there.
+ */
+export function ignoredFolders(settings: Pick<FieldySyncSettings, 'ignoredFolders' | 'folder' | 'peopleFolder' | 'linkSpeakers'>): string[] {
+	const kept = [settings.folder, ...(settings.linkSpeakers && settings.peopleFolder ? [settings.peopleFolder] : [])].map((f) => sanitizeFolderPath(f));
+	const folders = new Set<string>();
+	for (const line of settings.ignoredFolders.split('\n')) {
+		const folder = sanitizeFolderPath(line);
+		if (folder === '' || kept.some((k) => isInFolder(k, folder))) continue;
+		folders.add(folder);
+	}
+	return [...folders];
+}
+
+/** Ignored-folder lines that do not apply because they hold a folder the plugin writes to. */
+export function overlappingIgnoredFolders(settings: Pick<FieldySyncSettings, 'ignoredFolders' | 'folder' | 'peopleFolder' | 'linkSpeakers'>): string[] {
+	const active = new Set(ignoredFolders(settings));
+	return settings.ignoredFolders
+		.split('\n')
+		.map((line) => sanitizeFolderPath(line))
+		.filter((folder) => folder !== '' && !active.has(folder));
+}
+
 export function emailName(email: string): string | null {
 	const local = email.split('@')[0]?.split('+')[0]?.trim() ?? '';
 	return local || null;
@@ -319,6 +347,7 @@ export function sanitizeSettings(raw: unknown): FieldySyncSettings {
 		folder: text(s.folder, d.folder, 300).trim() || d.folder,
 		subfolders: pick(s.subfolders, SUBFOLDER_MODES, d.subfolders),
 		subfolderFormat: text(s.subfolderFormat, d.subfolderFormat, 100).trim() || d.subfolderFormat,
+		ignoredFolders: text(s.ignoredFolders, d.ignoredFolders, 5000),
 		importNewOnSync: bool(s.importNewOnSync, d.importNewOnSync),
 		syncWindowDays: int(s.syncWindowDays, d.syncWindowDays, 1, 3650),
 		recordingSource: pick(s.recordingSource, ['all', ...RECORDING_SOURCES] as const, d.recordingSource),

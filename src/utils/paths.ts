@@ -60,6 +60,14 @@ export function sanitizeFolderPath(input: string | null | undefined): string {
 	return segments.map((segment) => sanitizeFilename(segment, 120)).join('/');
 }
 
+/** Whether `path` is `folder` itself or inside it (case-insensitive, like the vault on Windows and macOS). */
+export function isInFolder(path: string, folder: string): boolean {
+	if (folder === '') return true;
+	const p = path.toLowerCase();
+	const f = folder.toLowerCase();
+	return p === f || p.startsWith(`${f}/`);
+}
+
 export function joinVaultPath(...parts: string[]): string {
 	return parts
 		.flatMap((part) => part.split('/'))

@@ -14,7 +14,7 @@ import {
 import { sleep } from '../../utils/async';
 import { durationMinutes, formatDuration, HISTORY_START_ISO } from '../../utils/dates';
 import { describeError, isCancellation } from '../../utils/errors';
-import { FIELDY_REFERRAL_URL, shareLinkFields, TEMPORARY_EXCEPTION_MS } from '../../settings/settings';
+import { FIELDY_REFERRAL_URL, ignoredFolders, shareLinkFields, TEMPORARY_EXCEPTION_MS } from '../../settings/settings';
 import type { PrivacyVerdict } from '../../privacy/PrivacyGuard';
 import { describeMatches } from '../../privacy/privacy';
 import type { LocalStatus } from '../../main';
@@ -180,6 +180,8 @@ export class ConversationsTab {
 	 * until the filters apply again: after the pause, or on "Apply".
 	 */
 	private held: ReadonlySet<string> | null = null;
+	/** The ignored folders the note statuses were read with. */
+	private ignoredKey = '';
 	private filtersOpen = false;
 	private items: FieldyConversation[] = [];
 	private readonly byId = new Map<string, FieldyConversation>();
@@ -300,6 +302,12 @@ export class ConversationsTab {
 		}
 		if (!this.loaded) return;
 		this.queuePrivacyChecks(this.items);
+		// Ignored folders changed: which conversations have a note may have too.
+		const ignored = ignoredFolders(this.plugin.settings).join('\n');
+		if (ignored !== this.ignoredKey) {
+			this.ignoredKey = ignored;
+			void this.refreshLocal();
+		}
 		this.renderList();
 		if (this.held !== null && !this.plugin.settings.panelApplyFiltersManually) this.debouncedApply();
 	}

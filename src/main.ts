@@ -9,7 +9,7 @@ import { connectionLabel, nextConnectionState, type ConnectionState } from './co
 import { buildDiagnostics } from './diagnostics';
 import { ID_KEY } from './markdown/ConversationRenderer';
 import { PrivacyGuard, sanitizeTranscriptChecks, TranscriptCheckCache, type TranscriptCheck } from './privacy/PrivacyGuard';
-import { emailName, exceptionActive, ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
+import { emailName, exceptionActive, ignoredFolders, ISSUES_URL, sanitizeSettings, type FieldySyncSettings } from './settings/settings';
 import { FieldySettingsTab } from './settings/SettingsTab';
 import { ObsidianNoteStore } from './sync/ObsidianNoteStore';
 import type { NoteRef } from './sync/NoteStore';
@@ -108,7 +108,7 @@ export default class FieldySyncPlugin extends Plugin {
 			retryPolicy: () => ({ ...DEFAULT_RETRY_POLICY, maxRetries: this.settings.maxRetries }),
 			logger: this.logger,
 		});
-		this.store = new ObsidianNoteStore(this.app);
+		this.store = this.noteStore();
 		this.privacy = new PrivacyGuard({ settings: () => this.settings, client: this.client, cache: this.privacyChecks });
 		this.engine = new SyncEngine({
 			client: this.client,
@@ -512,14 +512,19 @@ export default class FieldySyncPlugin extends Plugin {
 		return emailName(email);
 	}
 
+	/** The vault's notes, as the plugin sees them: without the ignored folders. */
+	noteStore(): ObsidianNoteStore {
+		return new ObsidianNoteStore(this.app, () => ignoredFolders(this.settings));
+	}
+
 	/** Paths of notes linked to Fieldy conversations (first note per id). */
 	async noteIndex(): Promise<Map<string, string>> {
-		return this.pathsFrom(await new ObsidianNoteStore(this.app).indexByFieldyId());
+		return this.pathsFrom(await this.noteStore().indexByFieldyId());
 	}
 
 	/** Note paths and local states from a single scan of the vault (the panel needs both). */
 	async localIndex(ids: readonly string[]): Promise<{ statuses: Map<string, LocalStatus>; paths: Map<string, string> }> {
-		const index = await new ObsidianNoteStore(this.app).indexByFieldyId();
+		const index = await this.noteStore().indexByFieldyId();
 		return { statuses: this.statusesFrom(index, ids), paths: this.pathsFrom(index) };
 	}
 
@@ -535,7 +540,7 @@ export default class FieldySyncPlugin extends Plugin {
 
 	/** Local state of conversations for the import dialog and the panel. */
 	async localStatuses(ids: readonly string[]): Promise<Map<string, LocalStatus>> {
-		return this.statusesFrom(await new ObsidianNoteStore(this.app).indexByFieldyId(), ids);
+		return this.statusesFrom(await this.noteStore().indexByFieldyId(), ids);
 	}
 
 	private statusesFrom(index: Map<string, NoteRef[]>, ids: readonly string[]): Map<string, LocalStatus> {

@@ -117,6 +117,7 @@ An edited note is never overwritten and the original is never lost: the Fieldy v
 | --- | --- |
 | You delete a note | It is not re-created by sync (unless **Re-create notes you deleted** is on). You can bring it back from the import dialog or the panel. |
 | You rename or move a note | It keeps syncing at its new location. |
+| You move a note into an [ignored folder](#folders-and-file-names) | Like a deleted note: it is no longer updated, and not re-created unless **Re-create notes you deleted** is on. The panel shows it as deleted. |
 | You remove the markers | The whole note becomes your edited version and is left alone. Restoring appends a fresh Fieldy section. |
 | A conversation is locked by your Fieldy plan's history window | Existing notes are never replaced with the locked (redacted) version; locked conversations are not imported. |
 | A conversation is deleted in Fieldy | Its note is kept. The plugin never deletes notes, except, if you turn it on, those of private conversations. |
@@ -174,6 +175,7 @@ The settings are grouped in pages under **Settings → Fieldy Sync**. Each setti
 | Subfolder format | `YYYY/MM` | The custom [Moment.js format](https://momentjs.com/docs/#/displaying/format/), such as `YYYY/[Q]Q`. |
 | File name pattern | `{date} - {title}` | Tokens `{date}`, `{time}`, `{title}` and `{id}`. |
 | File name date format | `YYYY-MM-DD` | Moment.js format of `{date}`. |
+| Folders to ignore | (none) | One folder per line, with its subfolders. The plugin acts as if notes there did not exist: no Fieldy notes or people notes are looked for in them, and dashboards and the panel leave them out. A folder that holds the folder for new notes, or the people folder while speaker links are on, is not ignored; **Ignored now** shows the folders in effect. |
 
 ### Note content
 
@@ -333,6 +335,8 @@ The panel stays light on long histories: it draws 100 cards at a time, checks sh
 **Can I edit imported notes?** Yes. Write freely outside the Fieldy section. Edits inside it are kept too: the note becomes your edited version and sync leaves it as you wrote it. The original stays in Fieldy, where the panel shows it, and you can restore it whenever you like.
 
 **Can I rename or move notes?** Yes. Notes are tracked by `fieldy_id`, not by path.
+
+**Can I keep copies or templates with a `fieldy_id` out of sync?** Yes: list their folder under **Folders to ignore** (Folders and file names). Notes there are invisible to the plugin.
 
 **Does the plugin create anything in Fieldy?** Only share links: one per new note, if the conversation has none, while **Create a share link for new notes** is on (off by default, on the Note content page), or when you use the share link switch on a card.
 

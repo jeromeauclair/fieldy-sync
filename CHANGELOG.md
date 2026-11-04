@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.1.0
+
+A new option, and everything from 1.0.2.
+
+- **Folders to ignore** (Folders and file names): the plugin acts as if notes in these folders did not exist, for sync, people notes, dashboards and the panel. Useful for templates, archives or copies. The folder for new notes can't be ignored.
+
 ## 1.0.2
 
 Code-quality changes from the Obsidian community directory review. Nothing changes in how the plugin works.

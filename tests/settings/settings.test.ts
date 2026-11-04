@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, emailName, exceptionActive, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
+import { DEFAULT_SETTINGS, emailName, exceptionActive, ignoredFolders, overlappingIgnoredFolders, sanitizeSettings, taskStatusesFor } from '../../src/settings/settings';
 import { sanitizeSyncState } from '../../src/sync/SyncState';
 
 describe('sanitizeSettings', () => {
@@ -104,5 +104,29 @@ describe('sanitizeSyncState', () => {
 		});
 		expect(Object.keys(state.records)).toEqual(['good']);
 		expect(sanitizeSyncState(null).records).toEqual({});
+	});
+});
+
+describe('ignoredFolders', () => {
+	const base = { ...DEFAULT_SETTINGS, folder: 'Fieldy', peopleFolder: 'People', linkSpeakers: false };
+
+	it('reads one folder per line, cleaned up and without repeats', () => {
+		expect(ignoredFolders({ ...base, ignoredFolders: ' Templates/ \n\nArchive\\Old\nTemplates\n../x' })).toEqual(['Templates', 'Archive/Old', 'x']);
+	});
+
+	it('never ignores a folder that holds the folder for new notes', () => {
+		const s = { ...base, folder: 'Notes/Fieldy', ignoredFolders: 'Notes\nNotes/Fieldy\nNotes/Fieldy/2026\nArchive' };
+		// A subfolder of the notes folder can still be ignored (an archive inside it, for example).
+		expect(ignoredFolders(s)).toEqual(['Notes/Fieldy/2026', 'Archive']);
+		expect(overlappingIgnoredFolders(s)).toEqual(['Notes', 'Notes/Fieldy']);
+	});
+
+	it('keeps the people folder only while speaker links are on', () => {
+		expect(ignoredFolders({ ...base, ignoredFolders: 'People' })).toEqual(['People']);
+		expect(ignoredFolders({ ...base, linkSpeakers: true, ignoredFolders: 'People' })).toEqual([]);
+	});
+
+	it('is empty by default', () => {
+		expect(ignoredFolders(DEFAULT_SETTINGS)).toEqual([]);
 	});
 });
