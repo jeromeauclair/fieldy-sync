@@ -34,10 +34,10 @@ An Obsidian plugin by an independent developer, not affiliated with Fieldy. Its 
 
 ### From Community plugins
 
-Once the plugin is published in the community directory:
-
 1. Open **Settings → Community plugins** and turn off Restricted mode if needed.
 2. Select **Browse**, search for **Fieldy Sync**, then **Install** and **Enable**.
+
+Or open the [Fieldy Sync page](https://community.obsidian.md/plugins/fieldy-sync) in the plugin directory and select **Add to Obsidian**.
 
 ### Manual installation
 
@@ -88,7 +88,7 @@ Next: Fieldy tasks written in the [Tasks](https://publish.obsidian.md/tasks/) pl
 
 ## Support
 
-Questions and bug reports: [GitHub issues](https://github.com/jeromeauclair/fieldy-sync/issues). **Fieldy Sync: Copy diagnostics** copies a report without secrets to attach.
+Questions and bug reports: [GitHub issues](https://github.com/jeromeauclair/fieldy-sync/issues). **Fieldy Sync: Copy diagnostics** copies a report without secrets to attach. To contribute, see [CONTRIBUTING.md](https://github.com/jeromeauclair/fieldy-sync/blob/main/CONTRIBUTING.md).
 
 If this plugin saves you time, you can support its continued development:
 

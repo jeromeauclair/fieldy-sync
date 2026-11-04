@@ -1,4 +1,4 @@
-import { Modal, moment, Setting, TFile, type App } from 'obsidian';
+import { Modal, Setting, TFile, type App } from 'obsidian';
 import { TASK_STATUSES, type FieldyTask } from '../api/types';
 import { EXPORT_FORMATS, renderExport, type ExportFormat, type ExportItem } from '../export/exportFormats';
 import type FieldySyncPlugin from '../main';
@@ -6,6 +6,7 @@ import { ObsidianNoteStore } from '../sync/ObsidianNoteStore';
 import { HISTORY_START_ISO } from '../utils/dates';
 import { describeError, isCancellation } from '../utils/errors';
 import { joinVaultPath, sanitizeFolderPath } from '../utils/paths';
+import { moment } from '../utils/moment';
 
 const DEFAULT_EXPORT_FOLDER = 'Fieldy/Exports';
 

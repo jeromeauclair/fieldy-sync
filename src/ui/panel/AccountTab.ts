@@ -1,4 +1,4 @@
-import { moment } from 'obsidian';
+import { moment } from '../../utils/moment';
 import type { FieldyMemoryTemplate } from '../../api/types';
 import { connectionLabel } from '../../connection';
 import { EditedNotesModal } from '../EditedNotesModal';

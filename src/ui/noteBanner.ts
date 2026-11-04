@@ -7,7 +7,6 @@ import {
 	getFrontMatterInfo,
 	MarkdownView,
 	Menu,
-	moment,
 	parseYaml,
 	setIcon,
 	setTooltip,
@@ -18,6 +17,7 @@ import type FieldySyncPlugin from '../main';
 import { TEMPORARY_EXCEPTION_MS } from '../settings/settings';
 import { isSyncPaused } from '../sync/SyncEngine';
 import { describeError, isCancellation } from '../utils/errors';
+import { moment } from '../utils/moment';
 import { BANNER_HINTS, BANNER_LABELS, blockLayout, blockStatus, type BannerStatus, type BlockLayout } from './bannerModel';
 
 /**

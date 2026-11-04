@@ -1,9 +1,10 @@
-import { ConfirmationModal, Menu, Modal, moment, setIcon, setTooltip, type App } from 'obsidian';
+import { ConfirmationModal, Menu, Modal, setIcon, setTooltip, type App } from 'obsidian';
 import type { RestoreChoice } from '../sync/SyncEngine';
 import type { SyncRecord } from '../sync/SyncState';
 import { describeError } from '../utils/errors';
 import { parentFolder } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
+import { moment } from '../utils/moment';
 
 type SortKey = 'newest' | 'oldest' | 'title' | 'folder';
 

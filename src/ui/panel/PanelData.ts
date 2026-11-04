@@ -1,4 +1,4 @@
-import { moment } from 'obsidian';
+import { moment } from '../../utils/moment';
 import {
 	TASK_STATUSES,
 	type FieldyConversation,

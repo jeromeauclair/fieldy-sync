@@ -1,4 +1,4 @@
-import { ConfirmationModal, debounce, Menu, Modal, moment, Setting, setIcon, setTooltip, type App } from 'obsidian';
+import { ConfirmationModal, debounce, Menu, Modal, Setting, setIcon, setTooltip, type App } from 'obsidian';
 import type { FieldyTask, TaskChanges, TaskStatus } from '../../api/types';
 import { taskLine } from '../../markdown/ConversationRenderer';
 import { obsidianTaskLine, type TasksFormat } from '../../markdown/obsidianTasks';
@@ -10,6 +10,7 @@ import { iconButton, noKeyMessage } from './ConversationsTab';
 import { copyToClipboard, insertIntoLastNote } from './editorActions';
 import { nextContentRule, type ContentRule } from './filters';
 import type { FieldyView } from './FieldyView';
+import { moment } from '../../utils/moment';
 
 type TaskFilter = 'open' | 'completed' | 'dismissed';
 type Grouping = 'due' | 'conversation' | 'none';

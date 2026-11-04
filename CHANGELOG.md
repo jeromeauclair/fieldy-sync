@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.0.2
+
+Code-quality changes from the Obsidian community directory review. Nothing changes in how the plugin works.
+
+- Dates use a typed wrapper around the Moment.js that Obsidian bundles, so type checks no longer depend on the separate `moment` typings.
+- A contributing guide, and the README links to the plugin's page in the community directory.
+
 ## 1.0.1
 
 Changes from the Obsidian community directory review, and one fix.

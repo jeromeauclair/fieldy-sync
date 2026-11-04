@@ -1,4 +1,4 @@
-import { apiVersion, Events, moment, Notice, Platform, Plugin, TFile } from 'obsidian';
+import { apiVersion, Events, Notice, Platform, Plugin, TFile } from 'obsidian';
 import { FieldyClient } from './api/FieldyClient';
 import { obsidianTransport } from './api/obsidianTransport';
 import { RateLimiter } from './api/rateLimiter';
@@ -28,6 +28,7 @@ import { systemClock } from './utils/async';
 import { describeError, FieldyError, toFieldyError } from './utils/errors';
 import { createLogger, type Logger } from './utils/logger';
 import { redactSecrets } from './utils/redact';
+import { moment } from './utils/moment';
 
 interface PluginData {
 	settings: FieldySyncSettings;

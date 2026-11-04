@@ -1,4 +1,4 @@
-import { ConfirmationModal, moment, Notice, Platform, PluginSettingTab, setIcon, setTooltip, type App, type Setting, type SettingDefinition, type SettingDefinitionItem, type SettingDefinitionList } from 'obsidian';
+import { ConfirmationModal, Notice, Platform, PluginSettingTab, setIcon, setTooltip, type App, type Setting, type SettingDefinition, type SettingDefinitionItem, type SettingDefinitionList } from 'obsidian';
 import { RECORDING_SOURCES } from '../api/types';
 import { connectionLabel } from '../connection';
 import { renderTranscript } from '../markdown/TranscriptRenderer';
@@ -10,6 +10,7 @@ import { describeError } from '../utils/errors';
 import { applyFilenamePattern, joinVaultPath, sanitizeFolderPath, subfolderFor } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
 import { AUTO_SYNC_OPTIONS, FIELDY_REFERRAL_URL, ISSUES_URL, SYNC_WINDOW_OPTIONS, type FieldySyncSettings } from './settings';
+import { moment } from '../utils/moment';
 
 const SUPPORT_URL = 'https://buymeacoffee.com/jeromeauclair';
 const API_KEY_DOCS_URL = 'https://fieldyai.github.io/docs/public-api.md';

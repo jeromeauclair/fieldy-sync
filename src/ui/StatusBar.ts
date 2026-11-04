@@ -1,7 +1,8 @@
-import { moment, setTooltip } from 'obsidian';
+import { setTooltip } from 'obsidian';
 import type { SyncProgress } from '../sync/SyncEngine';
 import type { SyncRunSummary } from '../sync/SyncState';
 import { formatSyncSummary, statusBarText } from './summary';
+import { moment } from '../utils/moment';
 
 /**
  * Unobtrusive status bar indicator (desktop only; Obsidian has no status bar

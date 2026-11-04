@@ -1,4 +1,4 @@
-import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, moment, setIcon, setTooltip, ToggleComponent } from 'obsidian';
+import { Component, ConfirmationModal, debounce, MarkdownRenderer, MarkdownView, Menu, setIcon, setTooltip, ToggleComponent } from 'obsidian';
 import type { RestoreChoice } from '../../sync/SyncEngine';
 import { RECORDING_SOURCES, type FieldyConversation, type FieldySharable, type Page, type RecordingSource, type TaskStatus } from '../../api/types';
 import {
@@ -22,6 +22,7 @@ import { obsidianEventLine, obsidianTaskLine } from '../../markdown/obsidianTask
 import { readTasksFormat, tasksPluginEnabled } from '../tasksPlugin';
 import { copyToClipboard, insertIntoLastNote } from './editorActions';
 import type { FieldyView } from './FieldyView';
+import { moment } from '../../utils/moment';
 import {
 	activeFilterCount,
 	emptyFilters,

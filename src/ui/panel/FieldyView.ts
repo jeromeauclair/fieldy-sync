@@ -1,4 +1,4 @@
-import { debounce, ItemView, moment, setIcon, setTooltip, type WorkspaceLeaf } from 'obsidian';
+import { debounce, ItemView, setIcon, setTooltip, type WorkspaceLeaf } from 'obsidian';
 import { connectionLabel } from '../../connection';
 import type FieldySyncPlugin from '../../main';
 import { EditedNotesModal } from '../EditedNotesModal';
@@ -7,6 +7,7 @@ import { AccountTab } from './AccountTab';
 import { ConversationsTab, iconButton } from './ConversationsTab';
 import { PanelData } from './PanelData';
 import { TasksTab } from './TasksTab';
+import { moment } from '../../utils/moment';
 
 export const FIELDY_VIEW_TYPE = 'fieldy-sync-panel';
 

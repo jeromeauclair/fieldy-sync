@@ -1,4 +1,4 @@
-import { debounce, MarkdownRenderChild, moment, TFile, type App, type FrontMatterCache } from 'obsidian';
+import { debounce, MarkdownRenderChild, TFile, type App, type FrontMatterCache } from 'obsidian';
 import { ID_KEY } from '../markdown/ConversationRenderer';
 import {
 	computeStats,
@@ -15,6 +15,7 @@ import {
 import type FieldySyncPlugin from '../main';
 import { formatDuration } from '../utils/dates';
 import { blockLayout } from './bannerModel';
+import { moment } from '../utils/moment';
 
 /**
  * Registers the ```fieldy``` code block: lists conversations, tasks or stats

@@ -1,4 +1,4 @@
-import { Modal, moment, Setting, type App } from 'obsidian';
+import { Modal, Setting, type App } from 'obsidian';
 import type { FieldyConversation } from '../api/types';
 import { displayTitle } from '../markdown/ConversationRenderer';
 import { describeMatches } from '../privacy/privacy';
@@ -6,6 +6,7 @@ import { HISTORY_START_ISO } from '../utils/dates';
 import { describeError, isCancellation } from '../utils/errors';
 import { sanitizeFolderPath } from '../utils/paths';
 import type FieldySyncPlugin from '../main';
+import { moment } from '../utils/moment';
 
 type RangePreset = '3' | '7' | '14' | '30' | '90' | '365' | 'all' | 'custom';
 type LocalStatus = 'new' | 'imported' | 'deleted' | 'edited' | 'paused' | 'locked' | 'private';
