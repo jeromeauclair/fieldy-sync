@@ -1,6 +1,6 @@
 {
 	"name": "fieldy-sync",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Fieldy Sync: import and sync Fieldy conversations, summaries, tasks and transcripts into Obsidian notes.",
 	"main": "main.js",
 	"type": "module",
