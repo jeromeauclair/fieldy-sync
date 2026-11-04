@@ -116,7 +116,7 @@ export class ExportModal extends Modal {
 	}
 
 	private toggleCustom(): void {
-		for (const el of this.customEls) el.toggleClass('fieldy-hidden', this.preset !== 'custom');
+		for (const el of this.customEls) el.toggle(this.preset === 'custom');
 	}
 
 	private range(): { startTime: string; endTime: string } | null {

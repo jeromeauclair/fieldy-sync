@@ -2,7 +2,8 @@ name: Release
 
 # Pushing a tag that matches the manifest version (e.g. 1.0.0, no "v" prefix)
 # builds the plugin and creates a draft GitHub release with the assets
-# Obsidian downloads: main.js, manifest.json and styles.css.
+# Obsidian downloads: main.js, manifest.json and styles.css, with signed build
+# provenance (check one with: gh attestation verify main.js -R <owner>/<repo>).
 on:
   push:
     tags:
@@ -10,6 +11,9 @@ on:
 
 permissions:
   contents: write
+  # Signed build provenance for the release assets (artifact attestations).
+  id-token: write
+  attestations: write
 
 jobs:
   release:
@@ -39,6 +43,13 @@ jobs:
             echo "CHANGELOG.md has no \"## $tag\" section" >&2
             exit 1
           fi
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
       - name: Create draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

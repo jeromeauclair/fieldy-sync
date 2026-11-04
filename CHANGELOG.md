@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## 1.0.1
+
+Changes from the Obsidian community directory review, and one fix.
+
+- Fixed: a rare error that could stop the conversation list from redrawing.
+- Release files now come with signed build provenance (GitHub artifact attestations), proving they were built from this repository.
+- The README says how the plugin uses the vault's file list and the clipboard.
+- Styles no longer use `!important`.
+- Author name in the manifest: Jérôme Auclair.
+
 ## 1.0.0
 
 First release, licensed under the Functional Source License (FSL-1.1-MIT). Requires Obsidian 1.14.0 or newer. Tested on desktop; it installs on mobile with a one-time "not tested yet" notice (full mobile support is planned for 1.2). Documentation: [README](https://github.com/jeromeauclair/fieldy-sync/blob/main/README.md), [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) and [reference](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/reference.md).

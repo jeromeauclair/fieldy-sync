@@ -1,9 +1,5 @@
 /* Fieldy Sync */
 
-.fieldy-hidden {
-	display: none !important;
-}
-
 /* Status bar */
 .fieldy-status {
 	cursor: pointer;

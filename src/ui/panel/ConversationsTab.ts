@@ -783,19 +783,21 @@ export class ConversationsTab {
 			this.rowEls.get(id)?.remove();
 			this.dropRow(id);
 		}
+		// First draw what changed, then order: drawing a card can redraw others,
+		// so the order pass reads the cards as they are once drawing is done.
 		const synced = this.syncedSets();
+		for (const c of rows) {
+			const el = this.rowEls.get(c.id);
+			if (!el) this.renderRow(c);
+			else if (this.rowKeys.get(c.id) !== this.rowKey(c, synced)) {
+				this.dropRow(c.id);
+				this.renderRow(c, el);
+			}
+		}
 		let cursor: ChildNode | null = this.listEl.firstChild;
 		for (const c of rows) {
-			let el = this.rowEls.get(c.id);
-			if (el && this.rowKeys.get(c.id) !== this.rowKey(c, synced)) {
-				const old = el;
-				this.dropRow(c.id);
-				el = this.renderRow(c, old);
-				// The new card took the old one's place; if that was the insertion point, it is now.
-				if (cursor === old) cursor = el;
-			} else if (!el) {
-				el = this.renderRow(c);
-			}
+			const el = this.rowEls.get(c.id);
+			if (!el) continue;
 			if (el === cursor) cursor = el.nextSibling;
 			else this.listEl.insertBefore(el, cursor);
 		}

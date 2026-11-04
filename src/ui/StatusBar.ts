@@ -14,7 +14,7 @@ export class StatusBar {
 	}
 
 	setVisible(visible: boolean): void {
-		this.el.toggleClass('fieldy-hidden', !visible);
+		this.el.toggle(visible);
 	}
 
 	start(): void {

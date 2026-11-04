@@ -165,7 +165,7 @@ export class FieldyView extends ItemView {
 			const active = tabKey === key;
 			button.toggleClass('is-active', active);
 			button.setAttribute('aria-selected', String(active));
-			this.tabBodies.get(tabKey)?.toggleClass('fieldy-hidden', !active);
+			this.tabBodies.get(tabKey)?.toggle(active);
 		}
 		if (key === 'conversations') this.conversations.onShow();
 		if (key === 'tasks') this.tasks.onShow();

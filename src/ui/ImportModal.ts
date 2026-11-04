@@ -119,7 +119,8 @@ export class ImportModal extends Modal {
 		);
 
 		this.statusEl = contentEl.createDiv({ cls: 'fieldy-import-status' });
-		this.toolbarEl = contentEl.createDiv({ cls: 'fieldy-import-toolbar fieldy-hidden' });
+		this.toolbarEl = contentEl.createDiv({ cls: 'fieldy-import-toolbar' });
+		this.toolbarEl.hide();
 		this.buildToolbar();
 		this.listEl = contentEl.createDiv({ cls: 'fieldy-import-list' });
 
@@ -149,7 +150,7 @@ export class ImportModal extends Modal {
 	}
 
 	private toggleCustom(): void {
-		for (const el of this.customEls) el.toggleClass('fieldy-hidden', this.preset !== 'custom');
+		for (const el of this.customEls) el.toggle(this.preset === 'custom');
 	}
 
 	private range(): { startTime: string; endTime: string } | null {
@@ -220,7 +221,7 @@ export class ImportModal extends Modal {
 				})
 				.sort((a, b) => Date.parse(b.conversation.startTime) - Date.parse(a.conversation.startTime));
 			for (const row of this.rows) if (row.status === 'new') this.selected.add(row.conversation.id);
-			this.toolbarEl.removeClass('fieldy-hidden');
+			this.toolbarEl.show();
 			this.shown = PAGE;
 			this.renderList();
 		} catch (err) {
