@@ -9,6 +9,13 @@ Anything that changes your data on Fieldy always asks first and never runs as pa
 - **Fieldy tasks in the [Tasks](https://publish.obsidian.md/tasks/) plugin format inside notes**, with due, done and cancelled dates, so synced tasks appear in your Tasks queries. The panel already inserts tasks this way. Ticking a task will still never count as an edit.
 - **Your own template for new notes**, using the familiar `{{title}}` and `{{date}}` variables plus Fieldy placeholders such as `{{fieldy_summary}}` or `{{fieldy_tasks}}`. Applied only when a note is created; existing notes are never re-templated.
 
+- **A clear notice when an edited note has a newer source.** Today an edited note is left exactly as you wrote it, so a corrected transcript or summary in Fieldy does not reach it, and the note does not say that a newer version exists. Planned: remember the source version the edit was based on, and when Fieldy's version has changed since, show "Newer version in Fieldy" on the banner, the panel card and the **Review edited notes** list, with the side-by-side view already available. Syncing still never overwrites your edits.
+- **Finer protection for edited notes**, so correcting one line does not cut a note off from later updates. Options under consideration, to be chosen after testing:
+  - **Protect by part:** treat the summary, tasks, quotes and transcript as separate parts, so editing one only pauses that part and the others keep updating.
+  - **Keep both on update:** an opt-in setting where a changed source refreshes the Fieldy section and keeps your edited text below it ("Your edited version"), as **Restore, keep my edits** does today, but only when you ask for it.
+  - **Show what changed:** a short diff between the version your edit was based on and the new Fieldy version, before you choose.
+- **Tests for ticked tasks and corrected sources.** Ticking a task is never an edit and your ticks are kept when a note updates. Add a test, and a demo, covering a ticked task followed by a corrected transcript, to guard that the update arrives and the tick survives.
+
 ## 1.2: mobile, people and context
 
 - **Full mobile support**, tested on iOS and Android. Until then, the plugin installs on phones and tablets with a "not tested yet" notice.
