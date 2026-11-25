@@ -8,6 +8,7 @@ Fixes in notes and in the panel.
 
 - **Fieldy section ends with a `## ∎` heading.** Folding the section's last heading (often Transcript) also hid the end banner and your own notes below it, because Obsidian folds a heading down to the next one. Unedited notes get the heading on the next sync; notes you edited are left as they are.
 - **Conversations are sorted by date, newest first.** The panel used the order Fieldy sent them in, so recent conversations could appear far down the list. A new toolbar button switches to oldest first for the session.
+- **Transcripts are folded by default** in new installs (Collapse transcript is on). Existing installs keep their saved choice.
 - **New conversations appear in the panel after a sync**, in date order, without pressing Reload. Open cards stay open.
 
 ## 1.1.0

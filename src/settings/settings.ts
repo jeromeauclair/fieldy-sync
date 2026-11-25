@@ -188,7 +188,7 @@ export const DEFAULT_SETTINGS: FieldySyncSettings = {
 	frontmatterDates: 'local',
 	transcriptFormat: 'timestamped-speaker',
 	timestampStyle: 'clock',
-	collapseTranscript: false,
+	collapseTranscript: true,
 	fmSpeakers: true,
 	fmKeywords: true,
 	fmLocation: true,
