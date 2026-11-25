@@ -107,3 +107,13 @@ export function matchesFilters(
 	if (filters.source !== null && !sources?.has(filters.source)) return false;
 	return true;
 }
+
+/**
+ * Sorts conversations in place by start time: newest first unless `oldestFirst`.
+ * Fieldy's pages are not reliably in date order, so the panel never relies on
+ * the order they arrive in. Equal times keep their current order.
+ */
+export function sortConversations(items: FieldyConversation[], oldestFirst: boolean): FieldyConversation[] {
+	const direction = oldestFirst ? 1 : -1;
+	return items.sort((a, b) => direction * (Date.parse(a.startTime) - Date.parse(b.startTime)));
+}

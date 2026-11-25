@@ -6,6 +6,7 @@ import {
 	filterOptions,
 	matchesFilters,
 	nextContentRule,
+	sortConversations,
 	timeOfDay,
 	type PanelFilters,
 } from '../../src/ui/panel/filters';
@@ -82,5 +83,18 @@ describe('panel filters', () => {
 			speakers: ['Alice', 'Bob', 'bob'],
 			locations: ['1 Main St'],
 		});
+	});
+});
+
+describe('sortConversations', () => {
+	const at = (id: string, startTime: string) => makeConversation(id, { startTime });
+	const list = () => [at('b', '2026-11-20T10:00:00Z'), at('a', '2026-11-24T09:00:00Z'), at('c', '2026-11-22T15:00:00Z'), at('d', '2026-11-22T15:00:00Z')];
+
+	it('puts the newest first by default, whatever order Fieldy returned', () => {
+		expect(sortConversations(list(), false).map((c) => c.id)).toEqual(['a', 'c', 'd', 'b']);
+	});
+
+	it('puts the oldest first when asked, keeping a stable order for equal times', () => {
+		expect(sortConversations(list(), true).map((c) => c.id)).toEqual(['b', 'c', 'd', 'a']);
 	});
 });

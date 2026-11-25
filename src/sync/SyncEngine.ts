@@ -7,8 +7,9 @@ import {
 	buildCreationFrontmatter,
 	buildManagedFrontmatter,
 	displayTitle,
-	renderConversationBody,
+	NOTES_HEADING,
 	renderKey,
+	renderNoteBlock,
 	sameManagedFrontmatter,
 	SYNC_CONTROL_KEY,
 	withoutTranscript,
@@ -511,7 +512,7 @@ class SyncRun {
 		}
 
 		const input = await this.renderInput(conversation, tasks, localStates);
-		const inner = renderConversationBody(input, s, this.deps.formatDate);
+		const inner = renderNoteBlock(input, s, this.deps.formatDate);
 		const newBody = replaceBlock(block, inner);
 		const meta = blockMeta(inner, source);
 		const managed = buildManagedFrontmatter(input, s, this.deps.formatDate, this.nowIso());
@@ -579,7 +580,7 @@ class SyncRun {
 		);
 		if (s.createShareLinks) await this.ensureShareLink(conversation);
 		const input = await this.renderInput(conversation, tasks, undefined);
-		const inner = renderConversationBody(input, s, fmt);
+		const inner = renderNoteBlock(input, s, fmt);
 		const frontmatter = {
 			...buildManagedFrontmatter(input, s, fmt, this.nowIso()),
 			...buildCreationFrontmatter(conversation, s),
@@ -811,7 +812,7 @@ class SyncRun {
 		const note = await vaultOp(ref.path, () => store.readNote(ref.path));
 		const current = parseManagedBlock(note.body, note.meta);
 		const input = await this.renderInput(conversation, tasks, current.status === 'ok' ? taskStates(current.block.inner) : undefined);
-		const inner = renderConversationBody(input, this.settings, this.deps.formatDate);
+		const inner = renderNoteBlock(input, this.settings, this.deps.formatDate);
 		const managed = buildManagedFrontmatter(input, this.settings, this.deps.formatDate, this.nowIso());
 		const keptOn = this.deps.formatDate(this.nowIso(), 'YYYY-MM-DD HH:mm');
 
@@ -839,8 +840,14 @@ function stripMarkers(body: string): string {
 		.join('\n');
 }
 
+/** Content without the block's closing heading, when it is the last line. */
+function withoutNotesHeading(inner: string): string {
+	const trimmed = inner.trimEnd();
+	return trimmed.endsWith(`\n${NOTES_HEADING}`) ? trimmed.slice(0, -NOTES_HEADING.length) : inner;
+}
+
 function keptCopy(block: ManagedBlock, keptOn: string, withTranscript: boolean): string {
-	const kept = withTranscript ? block.inner : withoutTranscript(block.inner);
+	const kept = withoutNotesHeading(withTranscript ? block.inner : withoutTranscript(block.inner));
 	return `\n\n## Your edited version (kept ${keptOn})\n\n${kept.trim()}\n`;
 }
 

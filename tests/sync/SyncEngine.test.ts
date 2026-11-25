@@ -477,6 +477,8 @@ describe('SyncEngine: restoring the Fieldy version of an edited note', () => {
 		expect(parsed.block.inner).toContain('Newest Fieldy summary.');
 		expect(parsed.block.after).toContain('## Your edited version (kept 2026-10-29 12:00)');
 		expect(parsed.block.after).toContain('My edited summary.');
+		// The kept copy does not repeat the block's closing heading.
+		expect(parsed.block.after).not.toContain('## Notes');
 		expect(state.get('c1')?.status).toBe('synced');
 	});
 
