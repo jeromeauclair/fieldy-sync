@@ -7,7 +7,7 @@ import {
 	buildCreationFrontmatter,
 	buildManagedFrontmatter,
 	displayTitle,
-	NOTES_HEADING,
+	CLOSING_HEADING,
 	renderKey,
 	renderNoteBlock,
 	sameManagedFrontmatter,
@@ -841,13 +841,13 @@ function stripMarkers(body: string): string {
 }
 
 /** Content without the block's closing heading, when it is the last line. */
-function withoutNotesHeading(inner: string): string {
+function withoutClosingHeading(inner: string): string {
 	const trimmed = inner.trimEnd();
-	return trimmed.endsWith(`\n${NOTES_HEADING}`) ? trimmed.slice(0, -NOTES_HEADING.length) : inner;
+	return trimmed.endsWith(`\n${CLOSING_HEADING}`) ? trimmed.slice(0, -CLOSING_HEADING.length) : inner;
 }
 
 function keptCopy(block: ManagedBlock, keptOn: string, withTranscript: boolean): string {
-	const kept = withoutNotesHeading(withTranscript ? block.inner : withoutTranscript(block.inner));
+	const kept = withoutClosingHeading(withTranscript ? block.inner : withoutTranscript(block.inner));
 	return `\n\n## Your edited version (kept ${keptOn})\n\n${kept.trim()}\n`;
 }
 

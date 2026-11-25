@@ -142,8 +142,8 @@ describe('renderConversationBody', () => {
 	it('closes the note block with a level-2 heading, so folding the last section stops before the end marker', () => {
 		const block = renderNoteBlock(input(), testSettings(), formatUtc);
 		expect(block.startsWith(renderConversationBody(input(), testSettings(), formatUtc))).toBe(true);
-		expect(block.endsWith('\n\n## Notes')).toBe(true);
-		expect(renderConversationBody(input(), testSettings(), formatUtc)).not.toContain('## Notes');
+		expect(block.endsWith('\n\n## ∎')).toBe(true);
+		expect(renderConversationBody(input(), testSettings(), formatUtc)).not.toContain('## ∎');
 	});
 
 	it('sanitises untrusted titles', () => {

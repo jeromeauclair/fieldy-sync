@@ -281,7 +281,7 @@ export class ConversationsTab {
 				else this.renderFilterBar();
 			});
 		});
-		this.sortButton = iconButton(toolbar, 'arrow-down-wide-narrow', '', () => {
+		this.sortButton = iconButton(toolbar, 'clock-arrow-down', '', () => {
 			this.oldestFirst = !this.oldestFirst;
 			sortConversations(this.items, this.oldestFirst);
 			this.renderSortButton();
@@ -304,7 +304,7 @@ export class ConversationsTab {
 
 	private renderSortButton(): void {
 		const label = this.oldestFirst ? 'Oldest loaded first (click for newest first)' : 'Newest first (click for oldest loaded first)';
-		setIcon(this.sortButton, this.oldestFirst ? 'arrow-up-narrow-wide' : 'arrow-down-wide-narrow');
+		setIcon(this.sortButton, this.oldestFirst ? 'clock-arrow-up' : 'clock-arrow-down');
 		this.sortButton.setAttribute('aria-label', label);
 		setTooltip(this.sortButton, label);
 		this.sortButton.toggleClass('is-active', this.oldestFirst);

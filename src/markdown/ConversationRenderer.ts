@@ -15,7 +15,7 @@ import { speakerMarkdown, type SpeakerLinks } from './speakerLinks';
 import { renderTranscript } from './TranscriptRenderer';
 
 /** Bump when the rendered output changes, so unedited notes are refreshed once. */
-const RENDER_VERSION = 2;
+const RENDER_VERSION = 3;
 
 /** Frontmatter keys starting with this prefix are owned by the plugin. */
 const MANAGED_KEY_PREFIX = 'fieldy_';
@@ -270,11 +270,11 @@ export function renderConversationBody(input: ConversationRenderInput, settings:
  * block's last section (often the transcript) also hid the end marker's banner
  * and the user's own notes below it.
  */
-export const NOTES_HEADING = '## Notes';
+export const CLOSING_HEADING = '## ∎';
 
 /** The managed block content written into a note: the conversation, then the closing heading. */
 export function renderNoteBlock(input: ConversationRenderInput, settings: RenderSettings, formatDate: DateFormatter): string {
-	return `${renderConversationBody(input, settings, formatDate)}\n\n${NOTES_HEADING}`;
+	return `${renderConversationBody(input, settings, formatDate)}\n\n${CLOSING_HEADING}`;
 }
 
 /**
