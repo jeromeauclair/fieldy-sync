@@ -2,7 +2,9 @@
 
 All notable changes to this project are documented here. Versions follow [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 1.2.0
+
+A new look.
 
 - **Fieldy Sync has its own icon:** a worn pendant holding a note. It replaces the generic speech bubbles on the panel's ribbon button and tab, and the microphone on the settings tab. The panel header shows it too: click it to sync, and hover it to see the pendant swing (it stays still if your system asks for reduced motion). Logo files and usage rules are in `graphics/`.
 
