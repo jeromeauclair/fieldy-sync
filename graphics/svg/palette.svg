@@ -1,0 +1,30 @@
+<!-- Fieldy Sync palette swatch sheet. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300">
+  <rect width="760" height="300" fill="#ffffff"/>
+  <g font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="13">
+    <rect x="20" y="20" width="160" height="80" rx="10" fill="#8b5cf6" stroke="#d8dee6"/>
+    <text x="20" y="120" font-weight="600" fill="#1c2f45">Accent (violet)</text>
+    <text x="20" y="138" fill="#5a6b7d">#8b5cf6</text>
+    <rect x="200" y="20" width="160" height="80" rx="10" fill="#6d28d9" stroke="#d8dee6"/>
+    <text x="200" y="120" font-weight="600" fill="#1c2f45">Deep violet</text>
+    <text x="200" y="138" fill="#5a6b7d">#6d28d9</text>
+    <rect x="380" y="20" width="160" height="80" rx="10" fill="#1c2f45" stroke="#d8dee6"/>
+    <text x="380" y="120" font-weight="600" fill="#1c2f45">Ink</text>
+    <text x="380" y="138" fill="#5a6b7d">#1c2f45</text>
+    <rect x="560" y="20" width="160" height="80" rx="10" fill="#ddd2fd" stroke="#d8dee6"/>
+    <text x="560" y="120" font-weight="600" fill="#1c2f45">Frame</text>
+    <text x="560" y="138" fill="#5a6b7d">#ddd2fd</text>
+    <rect x="20" y="160" width="160" height="80" rx="10" fill="#a78bfa" stroke="#d8dee6"/>
+    <text x="20" y="260" font-weight="600" fill="#1c2f45">Accent on dark</text>
+    <text x="20" y="278" fill="#5a6b7d">#a78bfa</text>
+    <rect x="200" y="160" width="160" height="80" rx="10" fill="#eaf3fc" stroke="#d8dee6"/>
+    <text x="200" y="260" font-weight="600" fill="#1c2f45">Paper on dark</text>
+    <text x="200" y="278" fill="#5a6b7d">#eaf3fc</text>
+    <rect x="380" y="160" width="160" height="80" rx="10" fill="#f4f0ff" stroke="#d8dee6"/>
+    <text x="380" y="260" font-weight="600" fill="#1c2f45">Mist</text>
+    <text x="380" y="278" fill="#5a6b7d">#f4f0ff</text>
+    <rect x="560" y="160" width="160" height="80" rx="10" fill="#ede5ff" stroke="#d8dee6"/>
+    <text x="560" y="260" font-weight="600" fill="#1c2f45">Tile note</text>
+    <text x="560" y="278" fill="#5a6b7d">#ede5ff</text>
+  </g>
+</svg>

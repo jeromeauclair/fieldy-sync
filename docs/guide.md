@@ -14,7 +14,7 @@ How to use the side panel, the note banners, `fieldy` blocks, Dataview, edited n
 
 ## The Fieldy panel
 
-Open it with the <img src="icons/messages-square.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon or **Fieldy Sync: Open Fieldy panel**. It lives in the right sidebar and works independently of sync: you take exactly what you need, when you need it. Text you insert or copy from it is plain Markdown that belongs to you; it is never synced or updated afterwards.
+Open it with the <img src="icons/fieldy-sync.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon or **Fieldy Sync: Open Fieldy panel**. It lives in the right sidebar and works independently of sync: you take exactly what you need, when you need it. Text you insert or copy from it is plain Markdown that belongs to you; it is never synced or updated afterwards.
 
 ![A synced note next to the Conversations tab](images/panel-and-note.png)
 

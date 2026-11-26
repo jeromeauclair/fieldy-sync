@@ -2,6 +2,7 @@ import { ConfirmationModal, Notice, Platform, PluginSettingTab, setIcon, setTool
 import { RECORDING_SOURCES } from '../api/types';
 import { connectionLabel } from '../connection';
 import { renderTranscript } from '../markdown/TranscriptRenderer';
+import { FIELDY_ICON_ID } from '../ui/brandIcon';
 import { EditedNotesModal } from '../ui/EditedNotesModal';
 import { PrivateNotesModal } from '../ui/PrivateNotesModal';
 import { privacyRules } from '../privacy/privacy';
@@ -51,7 +52,7 @@ export class FieldySettingsTab extends PluginSettingTab {
 		private readonly plugin: FieldySyncPlugin,
 	) {
 		super(app, plugin);
-		this.icon = 'mic';
+		this.icon = FIELDY_ICON_ID;
 		// The rule forms have one row per rule: rebuild when the number of rules changed elsewhere
 		// (another device, a reload). Edits within a row never rebuild, so typing keeps its focus.
 		plugin.registerEvent(

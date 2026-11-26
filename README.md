@@ -57,7 +57,7 @@ API keys are created in the Fieldy mobile or desktop app under **Settings → De
 4. Look through the other settings pages: **Sync** (sync window, sync times, automatic sync), **Folders and file names**, **Note content**, **Tasks**, **Transcript**, **People** and **Privacy**. Each setting explains itself, and previews show the result.
 5. Run **Fieldy Sync: Sync now** or select the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/refresh-cw.svg" width="16" height="16" alt="Sync"> ribbon icon. For older history, use **Fieldy Sync: Import conversations**.
 
-Then open the panel with the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/messages-square.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) walks through it.
+Then open the panel with the <img src="https://raw.githubusercontent.com/jeromeauclair/fieldy-sync/main/docs/icons/fieldy-sync.svg" width="16" height="16" alt="Fieldy panel"> ribbon icon. The [user guide](https://github.com/jeromeauclair/fieldy-sync/blob/main/docs/guide.md) walks through it.
 
 ## At a glance
 

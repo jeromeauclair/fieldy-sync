@@ -19,3 +19,10 @@ export function normalizePath(path: string): string {
 export function requestUrl(): never {
 	throw new Error('requestUrl must not be called from unit tests');
 }
+
+/** Icon registry stand-in: records what the plugin registers. */
+export const registeredIcons = new Map<string, string>();
+
+export function addIcon(iconId: string, svgContent: string): void {
+	registeredIcons.set(iconId, svgContent);
+}

@@ -1,6 +1,7 @@
 import { debounce, ItemView, setIcon, setTooltip, type WorkspaceLeaf } from 'obsidian';
 import { connectionLabel } from '../../connection';
 import type FieldySyncPlugin from '../../main';
+import { createBrandMark, FIELDY_ICON_ID } from '../brandIcon';
 import { EditedNotesModal } from '../EditedNotesModal';
 import { ImportModal } from '../ImportModal';
 import { AccountTab } from './AccountTab';
@@ -56,7 +57,7 @@ export class FieldyView extends ItemView {
 	}
 
 	override getIcon(): string {
-		return 'messages-square';
+		return FIELDY_ICON_ID;
 	}
 
 	private flashEl: HTMLElement | null = null;
@@ -89,6 +90,14 @@ export class FieldyView extends ItemView {
 		root.addClass('fieldy-panel');
 
 		const header = root.createDiv({ cls: 'fieldy-panel-header' });
+		createBrandMark(header, {
+			size: 22,
+			title: 'Sync Fieldy conversations',
+			cls: 'fieldy-panel-brand',
+			onclick: () => {
+				if (!this.plugin.engine.isRunning) void this.plugin.runSync('manual');
+			},
+		});
 		this.statusEl = header.createDiv({ cls: 'fieldy-panel-status' });
 		this.syncEl = header.createDiv({ cls: 'fieldy-panel-sync' });
 

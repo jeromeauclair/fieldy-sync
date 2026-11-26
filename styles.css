@@ -207,11 +207,95 @@
 }
 
 .fieldy-panel-header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--size-2-2);
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	column-gap: var(--size-4-2);
+	row-gap: var(--size-2-2);
+	align-items: center;
 	padding-bottom: var(--size-4-2);
 	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.fieldy-panel-header > .fieldy-panel-status,
+.fieldy-panel-header > .fieldy-panel-sync {
+	grid-column: 2;
+}
+
+.fieldy-panel-header > .fieldy-panel-brand {
+	grid-column: 1;
+	grid-row: 1 / span 2;
+}
+
+/* Brand mark: the pendant signature. As a button, it swings and redraws its note on hover. */
+.fieldy-brand {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+	color: var(--text-muted);
+	line-height: 0;
+	transition:
+		transform 0.15s ease,
+		color 0.15s ease;
+}
+
+.fieldy-brand.is-clickable {
+	cursor: pointer;
+}
+
+.fieldy-brand.is-clickable:hover,
+.fieldy-brand.is-clickable:focus-visible {
+	color: var(--text-normal);
+	transform: scale(1.08);
+	outline: none;
+}
+
+.fieldy-brand .fieldy-brand-note,
+.fieldy-brand .fieldy-brand-deck {
+	stroke: var(--interactive-accent);
+}
+
+.fieldy-brand .fieldy-brand-pendant {
+	transform-box: view-box;
+	transform-origin: 16px 0.6px;
+}
+
+.fieldy-brand.is-clickable:hover .fieldy-brand-pendant,
+.fieldy-brand.is-clickable:focus-visible .fieldy-brand-pendant {
+	animation: fieldy-brand-swing 0.9s ease-out;
+}
+
+.fieldy-brand.is-clickable:hover .fieldy-brand-note,
+.fieldy-brand.is-clickable:focus-visible .fieldy-brand-note {
+	stroke-dasharray: 20;
+	stroke-dashoffset: 20;
+	animation: fieldy-brand-draw 0.6s ease 0.15s forwards;
+}
+
+@keyframes fieldy-brand-swing {
+	0% { transform: rotate(0deg); }
+	25% { transform: rotate(9deg); }
+	50% { transform: rotate(-6deg); }
+	75% { transform: rotate(3deg); }
+	100% { transform: rotate(0deg); }
+}
+
+@keyframes fieldy-brand-draw {
+	to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fieldy-brand.is-clickable:hover .fieldy-brand-pendant,
+	.fieldy-brand.is-clickable:focus-visible .fieldy-brand-pendant,
+	.fieldy-brand.is-clickable:hover .fieldy-brand-note,
+	.fieldy-brand.is-clickable:focus-visible .fieldy-brand-note {
+		animation: none;
+		stroke-dasharray: none;
+		stroke-dashoffset: 0;
+	}
 }
 
 .fieldy-panel-status,
