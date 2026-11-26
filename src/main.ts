@@ -18,6 +18,7 @@ import { mergeSyncState, sanitizeSyncState, SyncState, type SyncRunSummary, type
 import { EditedNotesModal } from './ui/EditedNotesModal';
 import { ExportModal } from './ui/ExportModal';
 import { ImportModal } from './ui/ImportModal';
+import { FIELDY_ICON_ID, registerFieldyIcon } from './ui/brandIcon';
 import { registerFieldyBlock } from './ui/fieldyBlock';
 import { registerNoteBanner } from './ui/noteBanner';
 import { QueryPresetModal } from './ui/QueryPresetModal';
@@ -132,9 +133,10 @@ export default class FieldySyncPlugin extends Plugin {
 			if (!this.engine.isRunning) void this.runSync('manual');
 		});
 
+		registerFieldyIcon();
 		this.registerView(FIELDY_VIEW_TYPE, (leaf) => new FieldyView(leaf, this));
 		this.addRibbonIcon('refresh-cw', 'Sync Fieldy conversations', () => void this.runSync('manual'));
-		this.addRibbonIcon('messages-square', 'Open Fieldy panel', () => void this.openPanel());
+		this.addRibbonIcon(FIELDY_ICON_ID, 'Open Fieldy panel', () => void this.openPanel());
 		this.registerCommands();
 		this.addSettingTab(new FieldySettingsTab(this.app, this));
 		registerNoteBanner(this);
