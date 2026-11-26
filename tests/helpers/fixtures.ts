@@ -58,5 +58,5 @@ export function makeSegment(id: string, timestamp: string, speaker: string, text
 }
 
 export function testSettings(overrides: Partial<FieldySyncSettings> = {}): FieldySyncSettings {
-	return { ...DEFAULT_SETTINGS, apiKeySecretId: 'fieldy-api-key', ...overrides };
+	return { ...DEFAULT_SETTINGS, apiKeySecretId: 'fieldy-api-key', collapseTranscript: false, ...overrides };
 }

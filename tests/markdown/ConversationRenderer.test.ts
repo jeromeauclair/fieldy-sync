@@ -6,6 +6,7 @@ import {
 	buildManagedFrontmatter,
 	locationText,
 	renderConversationBody,
+	renderNoteBlock,
 	renderKey,
 	renderSnippet,
 	sameManagedFrontmatter,
@@ -136,6 +137,13 @@ describe('renderConversationBody', () => {
 	it('can collapse the transcript into a callout', () => {
 		const body = renderConversationBody(input(), testSettings({ collapseTranscript: true }), formatUtc);
 		expect(body).toContain('## Transcript\n\n> [!quote]- Show transcript\n> `14:00:05` **Alex:** Hello.');
+	});
+
+	it('closes the note block with a level-2 heading, so folding the last section stops before the end marker', () => {
+		const block = renderNoteBlock(input(), testSettings(), formatUtc);
+		expect(block.startsWith(renderConversationBody(input(), testSettings(), formatUtc))).toBe(true);
+		expect(block.endsWith('\n\n## ∎')).toBe(true);
+		expect(renderConversationBody(input(), testSettings(), formatUtc)).not.toContain('## ∎');
 	});
 
 	it('sanitises untrusted titles', () => {

@@ -122,6 +122,7 @@ export class FieldyView extends ItemView {
 			events.on('sync-finished', () => {
 				this.renderSyncLine();
 				void this.conversations.refreshLocal();
+				void this.conversations.loadNewer();
 				if (this.tab === 'account') this.account.render();
 			}),
 		);

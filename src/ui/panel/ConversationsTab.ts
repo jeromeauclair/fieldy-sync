@@ -29,6 +29,7 @@ import {
 	filterOptions,
 	matchesFilters,
 	nextContentRule,
+	sortConversations,
 	TIME_OF_DAY_LABELS,
 	type PanelFilters,
 	type RowStatus,
@@ -184,6 +185,11 @@ export class ConversationsTab {
 	private ignoredKey = '';
 	private filtersOpen = false;
 	private items: FieldyConversation[] = [];
+	/** Newest first unless the user switched it (for this session only). */
+	private oldestFirst = false;
+	private sortButton!: HTMLButtonElement;
+	/** Set while conversations newer than the listed ones are being fetched (after a sync). */
+	private fetchingNewer = false;
 	private readonly byId = new Map<string, FieldyConversation>();
 	/** Cards on screen, by conversation id, with what they were drawn from (redrawn only when that changes). */
 	private readonly rowEls = new Map<string, HTMLElement>();
@@ -275,6 +281,14 @@ export class ConversationsTab {
 				else this.renderFilterBar();
 			});
 		});
+		this.sortButton = iconButton(toolbar, 'clock-arrow-down', '', () => {
+			this.oldestFirst = !this.oldestFirst;
+			sortConversations(this.items, this.oldestFirst);
+			this.renderSortButton();
+			this.renderList();
+			this.listEl.scrollTop = 0;
+		});
+		this.renderSortButton();
 		iconButton(toolbar, 'refresh-ccw', 'Reload from Fieldy', () => void this.reload());
 
 		this.contentFiltersEl = this.root.createDiv({ cls: 'fieldy-filter-icons' });
@@ -286,6 +300,57 @@ export class ConversationsTab {
 		this.observeRows();
 		if (this.loaded) this.renderList();
 		else void this.reload();
+	}
+
+	private renderSortButton(): void {
+		const label = this.oldestFirst ? 'Oldest loaded first (click for newest first)' : 'Newest first (click for oldest loaded first)';
+		setIcon(this.sortButton, this.oldestFirst ? 'clock-arrow-up' : 'clock-arrow-down');
+		this.sortButton.setAttribute('aria-label', label);
+		setTooltip(this.sortButton, label);
+		this.sortButton.toggleClass('is-active', this.oldestFirst);
+	}
+
+	/**
+	 * After a sync: adds the conversations newer than the newest one listed,
+	 * in date order, without reloading (open cards stay open).
+	 */
+	async loadNewer(): Promise<void> {
+		if (!this.loaded || this.fetchingNewer || !this.plugin.hasApiKey()) return;
+		const generation = this.generation;
+		const newest = this.items.reduce((max, c) => (c.startTime > max ? c.startTime : max), this.rangeStart());
+		const source = this.plugin.settings.recordingSource;
+		this.fetchingNewer = true;
+		try {
+			const added: FieldyConversation[] = [];
+			for await (const page of this.plugin.client.iterateConversations(
+				{ startTime: newest, endTime: new Date().toISOString(), recordingSource: source === 'all' ? undefined : source },
+				{ signal: this.view.data.signal },
+			)) {
+				if (generation !== this.generation) return;
+				for (const c of page.items) {
+					if (this.byId.has(c.id) || added.some((a) => a.id === c.id)) continue;
+					added.push(c);
+				}
+			}
+			this.plugin.reportRequestOutcome();
+			if (generation !== this.generation || added.length === 0) return;
+			this.items.push(...added);
+			for (const c of added) this.byId.set(c.id, c);
+			sortConversations(this.items, this.oldestFirst);
+			this.view.data.remember(added);
+			this.queuePrivacyChecks(added);
+			if (this.applied.content.link) this.queueLinkChecks(added.filter((c) => !c.locked).map((c) => c.id));
+			// The recording sources were checked up to an earlier time: check again so the new cards get theirs.
+			this.sources.clear();
+			this.sourcesCheckedFrom = null;
+			void this.checkSources();
+			await this.refreshLocal(false);
+			if (generation === this.generation) this.renderList();
+		} catch (err) {
+			if (!isCancellation(err)) this.plugin.reportRequestOutcome(err);
+		} finally {
+			this.fetchingNewer = false;
+		}
 	}
 
 	/** Settings changed: privacy filters may now match other cards. */
@@ -587,6 +652,7 @@ export class ConversationsTab {
 			else {
 				const fresh = next.value.items.filter((c) => !this.byId.has(c.id));
 				this.items.push(...fresh);
+				sortConversations(this.items, this.oldestFirst);
 				for (const c of fresh) this.byId.set(c.id, c);
 				this.view.data.remember(fresh);
 				this.queuePrivacyChecks(fresh);
@@ -635,7 +701,8 @@ export class ConversationsTab {
 			return;
 		}
 		if (!this.byId.has(conversationId)) {
-			this.items.unshift(conversation);
+			this.items.push(conversation);
+			sortConversations(this.items, this.oldestFirst);
 			this.byId.set(conversation.id, conversation);
 			this.view.data.remember([conversation]);
 			this.queuePrivacyChecks([conversation]);
